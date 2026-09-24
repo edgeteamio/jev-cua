@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Demo shop</title>
+<style>body{font-family:-apple-system,sans-serif;max-width:640px;margin:40px auto}.p{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #ddd}button{padding:8px 14px;font-size:15px}#cart{font-weight:600;margin:16px 0}#checkout{margin-top:24px;background:#1a73e8;color:#fff}</style></head>
+<body><h1>Demo shop</h1><p id="cart">Cart: 0 items</p>
+<div class="p"><span>Blue mug</span><button onclick="add('Blue mug')">Add blue mug to cart</button></div>
+<div class="p"><span>Red notebook</span><button onclick="add('Red notebook')">Add red notebook to cart</button></div>
+<div class="p"><span>Green pen</span><button onclick="add('Green pen')">Add green pen to cart</button></div>
+<div class="p"><span>Black lamp</span><button onclick="add('Black lamp')">Add black lamp to cart</button></div>
+<button id="checkout" onclick="document.getElementById('cart').textContent='CHECKED OUT'">Checkout</button>
+<script>var items=[];function add(n){items.push(n);document.getElementById('cart').textContent='Cart: '+items.length+' items: '+items.join(', ')}</script>
+</body></html>

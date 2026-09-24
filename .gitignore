@@ -1,0 +1,9 @@
+.build/
+dist/
+runs/
+.env
+.omx/
+*.xcodeproj
+.swiftpm/
+.DS_Store
+*.log

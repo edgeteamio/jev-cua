@@ -1,0 +1,232 @@
+{
+  "app": "Photo Booth",
+  "bundleId": "com.apple.PhotoBooth",
+  "commands": [
+    {
+      "text": "press take photo",
+      "expect": "e05",
+      "altIntents": [
+        "take_photo"
+      ]
+    },
+    {
+      "text": "click the effects button",
+      "expect": "e06"
+    },
+    {
+      "text": "switch to video mode",
+      "expect": "e09"
+    },
+    {
+      "text": "select four pictures",
+      "expect": "e07"
+    },
+    {
+      "text": "click the picture option",
+      "expect": "e08"
+    },
+    {
+      "text": "close the window",
+      "expect": "e01"
+    },
+    {
+      "text": "minimize the window",
+      "expect": "e02"
+    },
+    {
+      "text": "go full screen",
+      "expect": "e03"
+    },
+    {
+      "text": "click effects",
+      "expect": "e06"
+    },
+    {
+      "text": "press the shutter button",
+      "expect": "e05",
+      "altIntents": [
+        "take_photo"
+      ]
+    },
+    {
+      "text": "click the video button",
+      "expect": "e09"
+    },
+    {
+      "text": "click the close button",
+      "expect": "e01"
+    },
+    {
+      "text": "open effects",
+      "expect": "e06"
+    },
+    {
+      "text": "select the picture mode",
+      "expect": "e08"
+    },
+    {
+      "text": "click take photo",
+      "expect": "e05",
+      "altIntents": [
+        "take_photo"
+      ]
+    },
+    {
+      "text": "hit the effects button",
+      "expect": "e06"
+    },
+    {
+      "text": "tap video",
+      "expect": "e09"
+    },
+    {
+      "text": "click the thumbnail strip",
+      "expect": "e04"
+    },
+    {
+      "text": "choose the four pictures option",
+      "expect": "e07"
+    },
+    {
+      "text": "click the minimize button",
+      "expect": "e02"
+    },
+    {
+      "text": "click the purple dinosaur",
+      "expect": "none"
+    },
+    {
+      "text": "that photo came out great",
+      "expect": "none"
+    }
+  ],
+  "elements": [
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 404,
+        "y": 222
+      },
+      "id": "e01",
+      "role": "button",
+      "secure": false,
+      "text": "close window",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 427,
+        "y": 222
+      },
+      "id": "e02",
+      "role": "button",
+      "secure": false,
+      "text": "minimize window",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 450,
+        "y": 222
+      },
+      "id": "e03",
+      "role": "button",
+      "secure": false,
+      "text": "full screen",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 62,
+        "width": 720,
+        "x": 396,
+        "y": 664
+      },
+      "id": "e04",
+      "role": "grid",
+      "secure": false,
+      "text": "photo",
+      "where": "bottom-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 52,
+        "x": 730,
+        "y": 729
+      },
+      "id": "e05",
+      "role": "button",
+      "secure": false,
+      "text": "take photo",
+      "where": "bottom-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 26,
+        "width": 98,
+        "x": 1000,
+        "y": 743
+      },
+      "id": "e06",
+      "role": "button",
+      "secure": false,
+      "text": "Effects",
+      "where": "bottom-right"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 24,
+        "width": 32,
+        "x": 415,
+        "y": 744
+      },
+      "id": "e07",
+      "role": "radio",
+      "secure": false,
+      "text": "four pictures",
+      "where": "bottom-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 24,
+        "width": 30,
+        "x": 448,
+        "y": 744
+      },
+      "id": "e08",
+      "role": "radio",
+      "secure": false,
+      "text": "picture",
+      "where": "bottom-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 24,
+        "width": 30,
+        "x": 479,
+        "y": 744
+      },
+      "id": "e09",
+      "role": "radio",
+      "secure": false,
+      "text": "video",
+      "where": "bottom-left"
+    }
+  ],
+  "offscreen": []
+}

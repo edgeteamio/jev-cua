@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Fixture form</title>
+<style>body{font-family:-apple-system,sans-serif;max-width:520px;margin:40px auto}label{display:block;margin:14px 0 4px}input{width:100%;padding:8px;font-size:16px}button{margin-top:18px;padding:10px 18px;font-size:16px}#status{margin-top:16px;color:#555}</style></head>
+<body><h1>Contact form</h1>
+<form onsubmit="document.getElementById('status').textContent='SUBMITTED';return false">
+<label for="first">First name</label><input id="first" name="first" aria-label="First name">
+<label for="last">Last name</label><input id="last" name="last" aria-label="Last name">
+<label for="city">City</label><input id="city" name="city" aria-label="City">
+<button type="submit">Submit form</button></form>
+<p id="status">not submitted</p></body></html>

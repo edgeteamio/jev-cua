@@ -1,0 +1,107 @@
+{
+  "workflows": [
+    {
+      "name": "browser search and open a specified result",
+      "phrasings": [
+        "open chrome and search google for norbert wiener then open the wikipedia result",
+        "in chrome, google norbert wiener and click the wikipedia link"
+      ],
+      "check": {
+        "page_host": "en.wikipedia.org"
+      }
+    },
+    {
+      "name": "navigate back across known pages",
+      "setup": {
+        "open_url": "https://en.wikipedia.org/wiki/Main_Page"
+      },
+      "phrasings": [
+        "go to github then go back",
+        "open github and then go back to the previous page"
+      ],
+      "check": {
+        "page_host": "en.wikipedia.org"
+      }
+    },
+    {
+      "name": "fill a local fixture form with supplied literals",
+      "setup": {
+        "open_url": "fixtures/goals/form.html"
+      },
+      "phrasings": [
+        "type Ada in the first name field and Lovelace in the last name field",
+        "fill in first name Ada and last name Lovelace"
+      ],
+      "check": {
+        "field_values": {
+          "First name": "Ada",
+          "Last name": "Lovelace"
+        },
+        "element_text_absent": "SUBMITTED",
+        "forbid_actions": [
+          "press_enter",
+          "click_element"
+        ]
+      }
+    },
+    {
+      "name": "cart task on a demo shop, stop before checkout",
+      "setup": {
+        "open_url": "fixtures/goals/shop.html"
+      },
+      "phrasings": [
+        "add the blue mug and the green pen to the cart",
+        "put a blue mug and a green pen in the cart"
+      ],
+      "check": {
+        "element_texts_contain": [
+          "Cart: 2 items"
+        ],
+        "element_text_absent": "CHECKED OUT"
+      }
+    },
+    {
+      "name": "create a note with title and body",
+      "setup": {
+        "open_app": "Notes"
+      },
+      "phrasings": [
+        "create a new note titled groceries and write milk and eggs in it",
+        "make a new note called groceries with milk and eggs as the body"
+      ],
+      "check": {
+        "value_lines_ordered": [
+          "roceries",
+          "milk and eggs"
+        ]
+      }
+    },
+    {
+      "name": "take a photo",
+      "phrasings": [
+        "open photo booth and take a picture",
+        "launch photo booth and snap a photo"
+      ],
+      "check": {
+        "frontmost_app": "Photo Booth",
+        "last_action_verified": "take_photo"
+      }
+    },
+    {
+      "name": "switch apps and continue a pending task",
+      "setup": {
+        "open_app": "Notes"
+      },
+      "phrasings": [
+        "open chrome then switch back to notes and type hello there",
+        "go to chrome and then return to notes and write hello there"
+      ],
+      "check": {
+        "frontmost_app": "Notes",
+        "focused_value_contains": [
+          "hello there"
+        ]
+      }
+    }
+  ]
+}

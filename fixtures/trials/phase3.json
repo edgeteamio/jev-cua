@@ -1,0 +1,286 @@
+{
+  "trials": [
+    {
+      "say": "open the notes app",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "create a new note",
+      "expect": [
+        "new_note"
+      ]
+    },
+    {
+      "say": "make the title say hello",
+      "expect": [
+        "type_text"
+      ]
+    },
+    {
+      "say": "open chrome",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "google search norbert wiener",
+      "expect": [
+        "web_search"
+      ]
+    },
+    {
+      "say": "open x dot com",
+      "expect": [
+        "open_site"
+      ]
+    },
+    {
+      "say": "take a picture of me",
+      "expect": [
+        "take_photo"
+      ]
+    },
+    {
+      "say": "open the notes app and create a new note",
+      "expect": [
+        "open_app",
+        "new_note"
+      ]
+    },
+    {
+      "say": "open chrome and go to wikipedia",
+      "expect": [
+        "open_app",
+        "open_site"
+      ]
+    },
+    {
+      "say": "launch photo booth",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "switch to chrome",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "bring up the notes app",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "search for alan turing",
+      "expect": [
+        "web_search"
+      ]
+    },
+    {
+      "say": "look up the weather in san diego",
+      "expect": [
+        "web_search"
+      ]
+    },
+    {
+      "say": "go to github",
+      "expect": [
+        "open_site"
+      ]
+    },
+    {
+      "say": "open youtube",
+      "expect": [
+        "open_site"
+      ]
+    },
+    {
+      "say": "scroll down",
+      "expect": [
+        "scroll_down"
+      ]
+    },
+    {
+      "say": "scroll down a bit",
+      "expect": [
+        "scroll_down"
+      ]
+    },
+    {
+      "say": "scroll up",
+      "expect": [
+        "scroll_up"
+      ]
+    },
+    {
+      "say": "go back",
+      "expect": [
+        "go_back"
+      ]
+    },
+    {
+      "say": "press escape",
+      "expect": [
+        "press_escape"
+      ]
+    },
+    {
+      "say": "type good morning",
+      "expect": [
+        "type_text"
+      ],
+      "note": "with a text field focused"
+    },
+    {
+      "say": "snap a photo",
+      "expect": [
+        "take_photo"
+      ]
+    },
+    {
+      "say": "new note",
+      "expect": [
+        "new_note"
+      ]
+    },
+    {
+      "say": "open safari",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "open system settings",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "send the message",
+      "expect": [],
+      "pending": "press_enter"
+    },
+    {
+      "say": "cancel",
+      "expect": []
+    },
+    {
+      "say": "send the message",
+      "expect": [],
+      "pending": "press_enter"
+    },
+    {
+      "say": "confirm",
+      "expect": [
+        "press_enter"
+      ]
+    },
+    {
+      "say": "the weather is nice today",
+      "expect": []
+    },
+    {
+      "say": "I was thinking about opening a bakery",
+      "expect": []
+    },
+    {
+      "say": "don't open chrome",
+      "expect": []
+    },
+    {
+      "say": "my friend told me to search for a new apartment",
+      "expect": []
+    },
+    {
+      "say": "she said take a picture of the sunset",
+      "expect": []
+    },
+    {
+      "say": "notes are useful for remembering things",
+      "expect": []
+    },
+    {
+      "say": "let me think about what to do next",
+      "expect": []
+    },
+    {
+      "say": "the google results were interesting",
+      "expect": []
+    },
+    {
+      "say": "scrolling through the feed is a waste of time",
+      "expect": []
+    },
+    {
+      "say": "what else is there",
+      "expect": []
+    },
+    {
+      "say": "google search ... stop",
+      "expect": [],
+      "stop": true,
+      "note": "say 'google search', pause half a second, then 'stop'"
+    },
+    {
+      "say": "make the title say ... stop",
+      "expect": [],
+      "stop": true,
+      "note": "say 'make the title say', pause, then 'stop'"
+    },
+    {
+      "say": "open the ... never mind",
+      "expect": [],
+      "stop": true,
+      "note": "say 'open the', pause, then 'never mind'"
+    },
+    {
+      "say": "open chrome so I can check my email",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "open the notes app because I need to write something down",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "make the title say salt and pepper",
+      "expect": [
+        "type_text"
+      ],
+      "note": "with a note body focused; payload 'salt and pepper'"
+    },
+    {
+      "say": "google search cats and dogs",
+      "expect": [
+        "web_search"
+      ]
+    },
+    {
+      "say": "click new note",
+      "expect": [
+        "new_note",
+        "click_element"
+      ],
+      "note": "either is acceptable"
+    },
+    {
+      "say": "open chrome",
+      "expect": [
+        "open_app"
+      ]
+    },
+    {
+      "say": "scroll to the bottom",
+      "expect": [
+        "scroll_down"
+      ]
+    }
+  ]
+}

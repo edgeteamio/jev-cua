@@ -1,0 +1,233 @@
+{
+  "commands": [
+    {
+      "text": "pull up the latest Alex Hormozi YouTube videos",
+      "intent": "web_search",
+      "site": "youtube",
+      "span": "Alex Hormozi",
+      "minWords": 6,
+      "note": "code strips latest + YouTube videos, sorts newest first"
+    },
+    {
+      "text": "when do the vikings play next",
+      "intent": "web_search",
+      "span": "when do the vikings play next",
+      "minWords": 6
+    },
+    {
+      "text": "what's the weather like tomorrow",
+      "intent": "web_search",
+      "span": "what's the weather like tomorrow",
+      "minWords": 5
+    },
+    {
+      "text": "how tall is the eiffel tower",
+      "intent": "web_search",
+      "span": "how tall is the eiffel tower",
+      "minWords": 6
+    },
+    {
+      "text": "who won the super bowl last year",
+      "intent": "web_search",
+      "span": "who won the super bowl last year",
+      "minWords": 7
+    },
+    {
+      "text": "what time is it in tokyo",
+      "intent": "web_search",
+      "span": "what time is it in tokyo",
+      "minWords": 6
+    },
+    {
+      "text": "show me pictures of golden retrievers",
+      "intent": "web_search",
+      "span": "pictures of golden retrievers",
+      "minWords": 6
+    },
+    {
+      "text": "find me a good pasta recipe",
+      "intent": "web_search",
+      "span": "good pasta recipe",
+      "minWords": 6
+    },
+    {
+      "text": "look up the typesafe docs",
+      "intent": "web_search",
+      "span": "typesafe docs",
+      "minWords": 5
+    },
+    {
+      "text": "show me the latest news about apple",
+      "intent": "web_search",
+      "span": "latest news about apple",
+      "minWords": 7
+    },
+    {
+      "text": "check the score of the vikings game",
+      "intent": "web_search",
+      "span": "score of the vikings game",
+      "minWords": 7
+    },
+    {
+      "text": "play some lofi beats on youtube",
+      "intent": "web_search",
+      "site": "youtube",
+      "span": "lofi beats",
+      "minWords": 6
+    },
+    {
+      "text": "find alex hormozi on youtube",
+      "intent": "web_search",
+      "site": "youtube",
+      "span": "alex hormozi",
+      "minWords": 5
+    },
+    {
+      "text": "youtube alex hormozi",
+      "intent": "web_search",
+      "site": "youtube",
+      "span": "alex hormozi",
+      "minWords": 3
+    },
+    {
+      "text": "search wikipedia for the french revolution",
+      "intent": "web_search",
+      "site": "wikipedia",
+      "span": "french revolution",
+      "minWords": 6,
+      "altSpans": [
+        "the french revolution"
+      ]
+    },
+    {
+      "text": "wikipedia the french revolution",
+      "intent": "web_search",
+      "site": "wikipedia",
+      "span": "french revolution",
+      "minWords": 4,
+      "altSpans": [
+        "the french revolution"
+      ]
+    },
+    {
+      "text": "what's on hacker news today",
+      "intent": "open_site",
+      "site": "hacker_news",
+      "minWords": 5,
+      "altIntents": [
+        "web_search"
+      ]
+    },
+    {
+      "text": "go to my github",
+      "intent": "open_site",
+      "site": "github",
+      "minWords": 4
+    },
+    {
+      "text": "open up youtube",
+      "intent": "open_site",
+      "site": "youtube",
+      "minWords": 3
+    },
+    {
+      "text": "take a selfie",
+      "intent": "take_photo",
+      "minWords": 3
+    },
+    {
+      "text": "let's take a photo",
+      "intent": "take_photo",
+      "minWords": 4
+    },
+    {
+      "text": "can you open chrome for me",
+      "intent": "open_app",
+      "app": "chrome",
+      "minWords": 4
+    },
+    {
+      "text": "hey can you scroll down a bit",
+      "intent": "scroll_down",
+      "minWords": 6
+    },
+    {
+      "text": "go back to the previous page",
+      "intent": "go_back",
+      "minWords": 2
+    },
+    {
+      "text": "close this popup",
+      "intent": "press_escape",
+      "minWords": 3
+    },
+    {
+      "text": "get rid of this dialog",
+      "intent": "press_escape",
+      "minWords": 5
+    },
+    {
+      "text": "jot down call mom tomorrow",
+      "intent": "type_text",
+      "span": "call mom tomorrow",
+      "minWords": 5,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {
+        "role": "textarea",
+        "secure": false
+      }
+    },
+    {
+      "text": "write down buy milk and eggs",
+      "intent": "type_text",
+      "span": "buy milk and eggs",
+      "minWords": 6,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {
+        "role": "textarea",
+        "secure": false
+      }
+    },
+    {
+      "text": "start a new note",
+      "intent": "new_note",
+      "minWords": 4,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes"
+    },
+    {
+      "text": "open up the notes app real quick",
+      "intent": "open_app",
+      "app": "notes",
+      "minWords": 4
+    }
+  ],
+  "nonCommands": [
+    {
+      "text": "I wonder when the vikings play next"
+    },
+    {
+      "text": "my brother loves alex hormozi videos"
+    },
+    {
+      "text": "the weather was terrible yesterday"
+    },
+    {
+      "text": "she asked me to open the notes app for her"
+    },
+    {
+      "text": "I was going to search for it but forgot"
+    },
+    {
+      "text": "that pasta recipe was amazing"
+    },
+    {
+      "text": "he keeps scrolling through youtube all day"
+    },
+    {
+      "text": "we should take a photo later maybe"
+    }
+  ]
+}

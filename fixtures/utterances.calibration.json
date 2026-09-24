@@ -1,0 +1,416 @@
+{
+  "commands": [
+    {
+      "text": "open the notes app",
+      "intent": "open_app",
+      "app": "notes",
+      "minWords": 3
+    },
+    {
+      "text": "open chrome",
+      "intent": "open_app",
+      "app": "chrome",
+      "minWords": 2
+    },
+    {
+      "text": "switch to finder",
+      "intent": "open_app",
+      "app": "finder",
+      "minWords": 3
+    },
+    {
+      "text": "launch photo booth",
+      "intent": "open_app",
+      "app": "photo_booth",
+      "minWords": 3
+    },
+    {
+      "text": "open up safari",
+      "intent": "open_app",
+      "app": "safari",
+      "minWords": 3
+    },
+    {
+      "text": "open the calendar",
+      "intent": "open_app",
+      "app": "calendar",
+      "minWords": 3
+    },
+    {
+      "text": "open messages",
+      "intent": "open_app",
+      "app": "messages",
+      "minWords": 2
+    },
+    {
+      "text": "open notes",
+      "intent": "open_app",
+      "app": "notes",
+      "minWords": 2,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes",
+      "note": "already done: Notes is frontmost; the executor verifies and no-ops"
+    },
+    {
+      "text": "open the notes app and create a new note",
+      "intent": "open_app",
+      "app": "notes",
+      "minWords": 3,
+      "note": "compound; the first command fires on the prefix and the rest becomes a continuation",
+      "expectedActs": [
+        "open_app",
+        "new_note"
+      ]
+    },
+    {
+      "text": "create a new note",
+      "intent": "new_note",
+      "minWords": 4,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes"
+    },
+    {
+      "text": "make a new note",
+      "intent": "new_note",
+      "minWords": 4,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes"
+    },
+    {
+      "text": "new note",
+      "intent": "new_note",
+      "minWords": 2
+    },
+    {
+      "text": "google search norbert wiener",
+      "intent": "web_search",
+      "site": "google",
+      "span": "norbert wiener",
+      "minWords": 3
+    },
+    {
+      "text": "search for alan turing",
+      "intent": "web_search",
+      "span": "alan turing",
+      "minWords": 3
+    },
+    {
+      "text": "look up typesafe jev",
+      "intent": "web_search",
+      "span": "typesafe jev",
+      "minWords": 3
+    },
+    {
+      "text": "search youtube for lofi beats",
+      "intent": "web_search",
+      "site": "youtube",
+      "span": "lofi beats",
+      "minWords": 4
+    },
+    {
+      "text": "google mark zuckerberg",
+      "intent": "web_search",
+      "site": "google",
+      "span": "mark zuckerberg",
+      "minWords": 2
+    },
+    {
+      "text": "google search tom cruise please",
+      "intent": "web_search",
+      "site": "google",
+      "span": "tom cruise",
+      "minWords": 3,
+      "note": "trailing filler"
+    },
+    {
+      "text": "open x dot com",
+      "intent": "open_site",
+      "site": "x_twitter",
+      "url": "x dot com",
+      "minWords": 4
+    },
+    {
+      "text": "go to wikipedia",
+      "intent": "open_site",
+      "site": "wikipedia",
+      "minWords": 3
+    },
+    {
+      "text": "take me to github",
+      "intent": "open_site",
+      "site": "github",
+      "minWords": 4
+    },
+    {
+      "text": "open youtube",
+      "intent": "open_site",
+      "site": "youtube",
+      "minWords": 2
+    },
+    {
+      "text": "go to hacker news",
+      "intent": "open_site",
+      "site": "hacker_news",
+      "minWords": 4
+    },
+    {
+      "text": "take a picture of me",
+      "intent": "take_photo",
+      "minWords": 3
+    },
+    {
+      "text": "take a photo",
+      "intent": "take_photo",
+      "minWords": 3
+    },
+    {
+      "text": "snap a picture",
+      "intent": "take_photo",
+      "minWords": 3
+    },
+    {
+      "text": "make the title say hello",
+      "intent": "type_text",
+      "span": "hello",
+      "minWords": 5,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {
+        "role": "textarea",
+        "label": "Note",
+        "secure": false
+      }
+    },
+    {
+      "text": "type hello world",
+      "intent": "type_text",
+      "span": "hello world",
+      "minWords": 2,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {
+        "role": "textarea",
+        "label": "Note",
+        "secure": false
+      }
+    },
+    {
+      "text": "write good morning",
+      "intent": "type_text",
+      "span": "good morning",
+      "minWords": 2,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {
+        "role": "textarea",
+        "label": "Note",
+        "secure": false
+      }
+    },
+    {
+      "text": "call it groceries",
+      "intent": "type_text",
+      "span": "groceries",
+      "minWords": 3,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {
+        "role": "textarea",
+        "label": "Note",
+        "secure": false
+      }
+    },
+    {
+      "text": "click the first result",
+      "intent": "click_element",
+      "minWords": 3,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "press take photo",
+      "intent": "click_element",
+      "minWords": 3,
+      "frontmostApp": "Photo Booth",
+      "frontmostBundleId": "com.apple.PhotoBooth",
+      "altIntents": [
+        "take_photo"
+      ],
+      "note": "ambiguous without elements; take_photo also satisfies the user"
+    },
+    {
+      "text": "open the second link",
+      "intent": "click_element",
+      "minWords": 4,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "press enter",
+      "intent": "press_enter",
+      "minWords": 2,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "hit return",
+      "intent": "press_enter",
+      "minWords": 2,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "submit",
+      "intent": "press_enter",
+      "minWords": 1,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "press escape",
+      "intent": "press_escape",
+      "minWords": 2
+    },
+    {
+      "text": "dismiss that",
+      "intent": "press_escape",
+      "minWords": 1,
+      "note": "\"dismiss\" alone is a complete escape command"
+    },
+    {
+      "text": "close the popup",
+      "intent": "press_escape",
+      "minWords": 3
+    },
+    {
+      "text": "scroll down",
+      "intent": "scroll_down",
+      "minWords": 2
+    },
+    {
+      "text": "scroll down a bit",
+      "intent": "scroll_down",
+      "minWords": 2
+    },
+    {
+      "text": "go to the bottom",
+      "intent": "scroll_down",
+      "minWords": 4
+    },
+    {
+      "text": "page down",
+      "intent": "scroll_down",
+      "minWords": 2
+    },
+    {
+      "text": "scroll up",
+      "intent": "scroll_up",
+      "minWords": 2
+    },
+    {
+      "text": "back to the top",
+      "intent": "scroll_up",
+      "minWords": 4
+    },
+    {
+      "text": "go back",
+      "intent": "go_back",
+      "minWords": 2,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "previous page",
+      "intent": "go_back",
+      "minWords": 2,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "confirm",
+      "intent": "confirm",
+      "minWords": 1,
+      "pending": "press_enter"
+    },
+    {
+      "text": "yes do it",
+      "intent": "confirm",
+      "minWords": 1,
+      "pending": "press_enter",
+      "note": "\"yes\" alone is a valid confirmation"
+    },
+    {
+      "text": "go ahead",
+      "intent": "confirm",
+      "minWords": 1,
+      "pending": "press_enter",
+      "note": "a pending confirmation is resolved on the first word recognized as confirm/cancel"
+    },
+    {
+      "text": "cancel",
+      "intent": "cancel",
+      "minWords": 1,
+      "pending": "press_enter"
+    },
+    {
+      "text": "never mind",
+      "intent": "cancel",
+      "minWords": 1,
+      "pending": "press_enter",
+      "note": "a pending confirmation is resolved on the first word recognized as confirm/cancel"
+    }
+  ],
+  "nonCommands": [
+    {
+      "text": "um"
+    },
+    {
+      "text": "okay so"
+    },
+    {
+      "text": "what do you think"
+    },
+    {
+      "text": "the weather is nice today"
+    },
+    {
+      "text": "I think we should get lunch"
+    },
+    {
+      "text": "so this is the demo"
+    },
+    {
+      "text": "what did you say"
+    },
+    {
+      "text": "don't open notes",
+      "note": "negation"
+    },
+    {
+      "text": "please don't take a picture",
+      "note": "negation"
+    },
+    {
+      "text": "the notes app is nice",
+      "note": "mentions an app without a command"
+    },
+    {
+      "text": "I was going to search for it later",
+      "note": "narration containing a command verb"
+    },
+    {
+      "text": "he said to open the door",
+      "note": "reported speech containing a command verb"
+    },
+    {
+      "text": "my title says hello on the note",
+      "note": "dictation containing command words"
+    },
+    {
+      "text": "all right that looks pretty good"
+    },
+    {
+      "text": "what else is there"
+    }
+  ]
+}

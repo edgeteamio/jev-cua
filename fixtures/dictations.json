@@ -1,0 +1,15 @@
+{
+  "note": "type_from/type_to experiment (plan item 3, from savka777/jev-use). Each command dictates text; `text` is exactly what should be typed. Long ones exceed the 32-span cap on purpose.",
+  "cases": [
+    { "command": "type hello world", "text": "hello world" },
+    { "command": "write good morning everyone", "text": "good morning everyone" },
+    { "command": "type the meeting is at three thirty in the small conference room on the second floor", "text": "the meeting is at three thirty in the small conference room on the second floor" },
+    { "command": "type please remember to pick up milk eggs bread butter and a dozen oranges on the way home tonight", "text": "please remember to pick up milk eggs bread butter and a dozen oranges on the way home tonight" },
+    { "command": "search for the best italian restaurants near the waterfront that are open late on a sunday", "text": "the best italian restaurants near the waterfront that are open late on a sunday" },
+    { "command": "type into the search box the quick brown fox jumps over the lazy dog again and again", "text": "the quick brown fox jumps over the lazy dog again and again" },
+    { "command": "write the report is due friday and needs the updated figures from the finance team before noon", "text": "the report is due friday and needs the updated figures from the finance team before noon" },
+    { "command": "type call mom tomorrow about the weekend plans and ask if she needs anything from the store", "text": "call mom tomorrow about the weekend plans and ask if she needs anything from the store" },
+    { "command": "enter my address is fourteen twenty two elm street apartment six in springfield", "text": "my address is fourteen twenty two elm street apartment six in springfield" },
+    { "command": "type thanks so much for your help earlier today it really made a difference for the whole team", "text": "thanks so much for your help earlier today it really made a difference for the whole team" }
+  ]
+}

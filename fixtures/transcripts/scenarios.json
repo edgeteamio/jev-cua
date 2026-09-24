@@ -1,0 +1,4575 @@
+{
+  "scenarios": [
+    {
+      "name": "open notes fires on the first fireable partial",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "firstActAfterRevision": 2
+      }
+    },
+    {
+      "name": "repeated identical partials do not repeat the action",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ]
+      }
+    },
+    {
+      "name": "final re-sent twice acts once",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "take_photo"
+        ]
+      }
+    },
+    {
+      "name": "compound utterance fires twice in order",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a new note",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "new_note"
+        ]
+      }
+    },
+    {
+      "name": "one new word after an act is not a new command",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome now",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome"
+        ]
+      }
+    },
+    {
+      "name": "revision that rewrites the executed words is ignored",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome instead",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ]
+      }
+    },
+    {
+      "name": "revision that rewrites earlier words but keeps the tail is aligned",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "all right open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ]
+      }
+    },
+    {
+      "name": "negation never fires",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "don't",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "don't open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "don't open notes",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": []
+      }
+    },
+    {
+      "name": "dictation containing command words never fires",
+      "field": {
+        "role": "textarea",
+        "label": "Note",
+        "secure": false
+      },
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "my title says",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "my title says hello on the note",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": []
+      }
+    },
+    {
+      "name": "free text waits for the final revision",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "google search",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "web_search google 'norbert wiener'"
+        ],
+        "firstActAfterRevision": 2
+      }
+    },
+    {
+      "name": "free text commits on silence without a final",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 600
+        }
+      ],
+      "expect": {
+        "actions": [
+          "web_search google 'norbert wiener'"
+        ]
+      }
+    },
+    {
+      "name": "typing needs a focused editable field",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "type hello world",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": []
+      }
+    },
+    {
+      "name": "typing into a focused field",
+      "field": {
+        "role": "textarea",
+        "label": "Note",
+        "secure": false
+      },
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "make the title say hello",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "type_text 'hello'"
+        ]
+      }
+    },
+    {
+      "name": "secure field is never typed into",
+      "field": {
+        "role": "textfield",
+        "label": "Password",
+        "secure": true
+      },
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "type hello",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": []
+      }
+    },
+    {
+      "name": "destructive gated action asks for confirmation then acts on confirm",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "send it press enter",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "confirm",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "press_enter"
+        ],
+        "pendingAfter": null
+      }
+    },
+    {
+      "name": "pending confirmation is cancelled by cancel",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "send it press enter",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "cancel",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "pendingAfter": null
+      }
+    },
+    {
+      "name": "pending confirmation survives unrelated chatter",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "send it press enter",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "i think we should get lunch",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "pendingAfter": "press_enter"
+      }
+    },
+    {
+      "name": "kill phrase clears a pending confirmation",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "send it press enter",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "stop",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "pendingAfter": null
+      }
+    },
+    {
+      "name": "non-allowlisted intent waits for silence",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "tick": 300
+        }
+      ],
+      "expect": {
+        "actions": []
+      }
+    },
+    {
+      "name": "non-allowlisted intent fires after the silence window",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "tick": 500
+        }
+      ],
+      "expect": {
+        "actions": [
+          "take_photo"
+        ]
+      }
+    },
+    {
+      "name": "two utterances back to back",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "go to wikipedia",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome",
+          "open_site wikipedia"
+        ]
+      }
+    },
+    {
+      "name": "searchable catalog site fires once its words settle",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "go to",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia",
+            false
+          ]
+        },
+        {
+          "tick": 350
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia please",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site wikipedia"
+        ],
+        "firstActAfterRevision": 1,
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "spoken domain waits for the final",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open x dot",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot com",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot com",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site x dot com"
+        ],
+        "firstActAfterRevision": 2
+      }
+    },
+    {
+      "name": "scroll waits for its words to settle, then fires once with the spoken amount",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down a bit",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "scroll_down little"
+        ],
+        "firstActAfterRevision": 2,
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "go back waits for commit then fires",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "go back",
+            false
+          ]
+        },
+        {
+          "tick": 950
+        }
+      ],
+      "expect": {
+        "actions": [
+          "go_back"
+        ]
+      }
+    },
+    {
+      "name": "press escape fires early",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "press escape",
+            false
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "press_escape"
+        ]
+      }
+    },
+    {
+      "name": "click without elements waits and never fires",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click the first result",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": []
+      }
+    },
+    {
+      "name": "fragment alone never fires",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": []
+      }
+    },
+    {
+      "name": "three commands in one breath",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome",
+          "open_site wikipedia",
+          "scroll_down page"
+        ]
+      }
+    },
+    {
+      "name": "ledger never holds a duplicate dispatch",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open notes",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open notes",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "every candidate executes against its own snapshot",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "scroll down",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u3",
+            "go to github",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome",
+          "scroll_down page",
+          "open_site github"
+        ],
+        "allVerified": true
+      }
+    },
+    {
+      "name": "empty and whitespace revisions are ignored",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "   ",
+            false
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": []
+      }
+    },
+    {
+      "name": "two commands in one final revision are both executed",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ]
+      }
+    },
+    {
+      "name": "open notes fires on the first fireable partial [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "open notes fires on the first fireable partial [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "open notes fires on the first fireable partial [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "open notes fires on the first fireable partial [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "repeated identical partials do not repeat the action [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "repeated identical partials do not repeat the action [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "repeated identical partials do not repeat the action [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "repeated identical partials do not repeat the action [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "final re-sent twice acts once [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "take_photo"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "final re-sent twice acts once [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "take",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture of",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "take_photo"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "final re-sent twice acts once [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "take a",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "take_photo"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "final re-sent twice acts once [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "take",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture of",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "take a picture of me",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "take_photo"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "compound utterance fires twice in order [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a new note",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "new_note"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "compound utterance fires twice in order [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a new",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a new note",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a new note",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "new_note"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "compound utterance fires twice in order [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a new note",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a new note",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "new_note"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "compound utterance fires twice in order [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a new",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app and create a new note",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "new_note"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "one new word after an act is not a new command [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open chrome now",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "one new word after an act is not a new command [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome now",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome now",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "one new word after an act is not a new command [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome now",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "revision that rewrites earlier words but keeps the tail is aligned [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "revision that rewrites earlier words but keeps the tail is aligned [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "revision that rewrites earlier words but keeps the tail is aligned [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "revision that rewrites earlier words but keeps the tail is aligned [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "negation never fires [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "don't open notes",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "negation never fires [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "don't",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "don't open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "don't open notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "don't open notes",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "negation never fires [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "don't",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "don't open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "don't open notes",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "free text waits for the final revision [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "web_search google 'norbert wiener'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "free text waits for the final revision [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "google",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "web_search google 'norbert wiener'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "free text waits for the final revision [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "google search",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "web_search google 'norbert wiener'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "free text waits for the final revision [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "google",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "web_search google 'norbert wiener'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "catalog site fires early on a partial [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia please",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site wikipedia"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "catalog site fires early on a partial [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "go",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "go to",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia please",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia please",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site wikipedia"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "catalog site fires early on a partial [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "go to",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia please",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia please",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site wikipedia"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "catalog site fires early on a partial [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "go",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "go to",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia please",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site wikipedia"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "spoken domain waits for the final [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open x dot com",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site x dot com"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "spoken domain waits for the final [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot com",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot com",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site x dot com"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "spoken domain waits for the final [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open x",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot com",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot com",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site x dot com"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "spoken domain waits for the final [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open x dot com",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site x dot com"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "scroll down a bit [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "scroll down a bit",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "scroll_down little"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "scroll down a bit [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down a",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down a bit",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down a bit",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "scroll_down little"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "scroll down, a 300 ms pause, then \"a bit\": the pause commits a page scroll",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "scroll down",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down a",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down a bit",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down a bit",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "scroll down a bit [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down a",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down a bit",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "scroll_down little"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "three commands in one breath [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome",
+          "open_site wikipedia",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "three commands in one breath [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia scroll down",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome",
+          "open_site wikipedia",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "three commands in one breath [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open chrome go",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia scroll down",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome",
+          "open_site wikipedia",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "three commands in one breath [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome go to wikipedia scroll down",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome",
+          "open_site wikipedia",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "ledger never holds a duplicate dispatch [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open notes",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "ledger never holds a duplicate dispatch [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open notes",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "ledger never holds a duplicate dispatch [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open notes",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "two commands in one final revision are both executed [final only]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "two commands in one final revision are both executed [word by word]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "two commands in one final revision are both executed [chunked with pauses]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            false
+          ]
+        },
+        {
+          "tick": 500
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "two commands in one final revision are both executed [silence, no final]",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes then scroll down",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "mid-command final chunk does not commit a truncated query",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "google search",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert",
+            false
+          ]
+        },
+        {
+          "tick": 150
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "web_search google 'norbert wiener'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "final flag is not sticky: a tail after a final waits for the new words",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "make the title say",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "make the title say hello",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "make the title say hello there",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "make the title say hello there",
+            true
+          ]
+        }
+      ],
+      "field": {
+        "role": "textarea",
+        "secure": false
+      },
+      "expect": {
+        "actions": [
+          "type_text 'hello'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "stop after a consumed command cancels what follows",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open the notes app stop",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "two utterances back to back each fire once",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "open chrome",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "scroll down",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "scroll down",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Google Chrome",
+          "scroll_down page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "chatter before a command in a later utterance does not fire",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "so what do you think about that",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "open notes",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "click a labelled button fires at the final only (not allowlisted)",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        }
+      ],
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "click take",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "click take photo",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "click take photo",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "click_element e01"
+        ],
+        "firstActAfterRevision": 3,
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "click by label picks the effects button",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        }
+      ],
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click the effects button",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "click_element e02"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "ambiguous click then a spoken number",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        }
+      ],
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click share",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "two",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "click_element e04"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "ambiguous click then the second one",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        }
+      ],
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click share",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "the",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "the second",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "the second one",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "click_element e04"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "ambiguous click then cancel presses nothing",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        }
+      ],
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click share",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "cancel",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "ambiguous click then an out-of-range number presses nothing",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        }
+      ],
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click share",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "five",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "ambiguous click then a new command moves on",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        }
+      ],
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click share",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "open notes",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "click with no matching element waits",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        }
+      ],
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click the purple dinosaur",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "type goes to the focused field when no field is named",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        }
+      ],
+      "field": {
+        "role": "textarea",
+        "secure": false
+      },
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "type hello world",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "type_text 'hello world'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "stop as its own utterance after an action changes nothing",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open notes",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "stop",
+            true
+          ]
+        },
+        {
+          "tick": 500
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "deny-listed label never becomes a candidate",
+      "elements": [
+        {
+          "id": "e01",
+          "role": "button",
+          "text": "Take Photo",
+          "where": "bottom-center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e02",
+          "role": "button",
+          "text": "Effects",
+          "where": "bottom-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 500,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e03",
+          "role": "button",
+          "text": "Share Note",
+          "where": "top-left",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 10,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e04",
+          "role": "button",
+          "text": "Share Folder",
+          "where": "top-right",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 500,
+            "y": 10,
+            "width": 60,
+            "height": 30
+          }
+        },
+        {
+          "id": "e05",
+          "role": "textfield",
+          "text": "Search",
+          "where": "top-center",
+          "editable": true,
+          "secure": false,
+          "frame": {
+            "x": 250,
+            "y": 10,
+            "width": 120,
+            "height": 24
+          }
+        },
+        {
+          "id": "e06",
+          "role": "button",
+          "text": "Delete Note",
+          "where": "center",
+          "editable": false,
+          "secure": false,
+          "frame": {
+            "x": 300,
+            "y": 300,
+            "width": 60,
+            "height": 30
+          }
+        }
+      ],
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "click delete note",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "a volatile scroll direction that is revised does not fire in the wrong direction",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "scroll",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll down",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll up",
+            false
+          ]
+        },
+        {
+          "tick": 400
+        },
+        {
+          "rev": [
+            "u1",
+            "scroll up",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "scroll_up page"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "committed chatter is consumed so a following command is judged alone",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "the weather is nice today",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u1",
+            "the weather is nice today",
+            true
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "the weather is nice today open notes",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "rev": [
+            "u1",
+            "the weather is nice today open notes",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "a bare phrase after opening a searchable site searches that site",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "mark zuckerberg",
+            false
+          ]
+        },
+        {
+          "rev": [
+            "u2",
+            "mark zuckerberg",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site wikipedia",
+          "web_search wikipedia 'mark zuckerberg'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "a bare phrase after opening notes types into the focused note",
+      "field": {
+        "role": "textarea",
+        "secure": false
+      },
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "Mark Zuckerberg",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes",
+          "type_text 'Mark Zuckerberg'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "chatter after an action is not a follow-up",
+      "field": {
+        "role": "textarea",
+        "secure": false
+      },
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "I think that went really well today",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "a follow-up long after the action is not applied",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "go to wikipedia",
+            true
+          ]
+        },
+        {
+          "tick": 8000
+        },
+        {
+          "tick": 8000
+        },
+        {
+          "tick": 8000
+        },
+        {
+          "rev": [
+            "u2",
+            "mark zuckerberg",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_site wikipedia"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "a follow-up with no field to type into waits without acting",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "open the notes app",
+            true
+          ]
+        },
+        {
+          "tick": 1600
+        },
+        {
+          "rev": [
+            "u2",
+            "Mark Zuckerberg",
+            true
+          ]
+        },
+        {
+          "tick": 1000
+        }
+      ],
+      "expect": {
+        "actions": [
+          "open_app Notes"
+        ],
+        "noDuplicates": true
+      }
+    }
+  ]
+}

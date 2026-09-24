@@ -1,0 +1,174 @@
+{
+  "commands": [
+    {
+      "text": "fire up the notes app",
+      "intent": "open_app",
+      "app": "notes",
+      "minWords": 4
+    },
+    {
+      "text": "could you open chrome",
+      "intent": "open_app",
+      "app": "chrome",
+      "minWords": 4
+    },
+    {
+      "text": "bring up photo booth",
+      "intent": "open_app",
+      "app": "photo_booth",
+      "minWords": 4
+    },
+    {
+      "text": "let's open up the notes app",
+      "intent": "open_app",
+      "app": "notes",
+      "minWords": 5
+    },
+    {
+      "text": "start a new note",
+      "intent": "new_note",
+      "minWords": 4,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes"
+    },
+    {
+      "text": "google norbert wiener",
+      "intent": "web_search",
+      "site": "google",
+      "span": "norbert wiener",
+      "minWords": 2
+    },
+    {
+      "text": "search the web for alan turing",
+      "intent": "web_search",
+      "span": "alan turing",
+      "minWords": 5
+    },
+    {
+      "text": "let's google search for elon musk",
+      "intent": "web_search",
+      "site": "google",
+      "span": "elon musk",
+      "minWords": 5
+    },
+    {
+      "text": "pull up x dot com",
+      "intent": "open_site",
+      "site": "x_twitter",
+      "url": "x dot com",
+      "minWords": 5
+    },
+    {
+      "text": "let's open up wikipedia",
+      "intent": "open_site",
+      "site": "wikipedia",
+      "minWords": 4
+    },
+    {
+      "text": "take my picture",
+      "intent": "take_photo",
+      "minWords": 3
+    },
+    {
+      "text": "make the heading say hello",
+      "intent": "type_text",
+      "span": "hello",
+      "minWords": 5,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {
+        "role": "textarea",
+        "label": "Note",
+        "secure": false
+      }
+    },
+    {
+      "text": "type in hello there",
+      "intent": "type_text",
+      "span": "hello there",
+      "minWords": 3,
+      "frontmostApp": "Notes",
+      "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {
+        "role": "textarea",
+        "label": "Note",
+        "secure": false
+      }
+    },
+    {
+      "text": "click on the first link",
+      "intent": "click_element",
+      "minWords": 4,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "hit enter",
+      "intent": "press_enter",
+      "minWords": 2,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "get rid of that popup",
+      "intent": "press_escape",
+      "minWords": 5,
+      "note": "only recognizable at \"popup\""
+    },
+    {
+      "text": "scroll down a little",
+      "intent": "scroll_down",
+      "minWords": 2
+    },
+    {
+      "text": "scroll back up",
+      "intent": "scroll_up",
+      "minWords": 3
+    },
+    {
+      "text": "go back a page",
+      "intent": "go_back",
+      "minWords": 2,
+      "frontmostApp": "Google Chrome",
+      "frontmostBundleId": "com.google.Chrome"
+    },
+    {
+      "text": "yes go ahead",
+      "intent": "confirm",
+      "minWords": 1,
+      "pending": "press_enter"
+    },
+    {
+      "text": "no cancel that",
+      "intent": "cancel",
+      "minWords": 2,
+      "pending": "press_enter"
+    }
+  ],
+  "nonCommands": [
+    {
+      "text": "I don't think we should open that",
+      "note": "negation"
+    },
+    {
+      "text": "she typed hello and left",
+      "note": "narration with command words"
+    },
+    {
+      "text": "alright that looks good"
+    },
+    {
+      "text": "can you hear me"
+    },
+    {
+      "text": "let's see"
+    },
+    {
+      "text": "I'm running dictation now"
+    },
+    {
+      "text": "the search results were wrong yesterday",
+      "note": "narration with command words"
+    }
+  ]
+}

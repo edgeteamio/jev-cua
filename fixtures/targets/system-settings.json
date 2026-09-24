@@ -1,0 +1,579 @@
+{
+  "app": "System Settings",
+  "bundleId": "com.apple.systempreferences",
+  "commands": [
+    {
+      "text": "open wifi settings",
+      "expect": "e07"
+    },
+    {
+      "text": "click bluetooth",
+      "expect": "e08"
+    },
+    {
+      "text": "go to general",
+      "expect": "e16"
+    },
+    {
+      "text": "open accessibility",
+      "expect": "e18"
+    },
+    {
+      "text": "click software update",
+      "expect": "e11"
+    },
+    {
+      "text": "open displays",
+      "expect": "e26"
+    },
+    {
+      "text": "go to the battery section",
+      "expect": "e13"
+    },
+    {
+      "text": "click about",
+      "expect": "e09"
+    },
+    {
+      "text": "click network",
+      "expect": "e10"
+    },
+    {
+      "text": "open appearance",
+      "expect": "e20"
+    },
+    {
+      "text": "click date and time",
+      "expect": "e25"
+    },
+    {
+      "text": "click wallpaper",
+      "expect": "e31"
+    },
+    {
+      "text": "open login items",
+      "expect": "e30"
+    },
+    {
+      "text": "click storage",
+      "expect": "e14"
+    },
+    {
+      "text": "go to spotlight",
+      "expect": "e29"
+    },
+    {
+      "text": "click desktop and dock",
+      "expect": "e24"
+    },
+    {
+      "text": "click language and region",
+      "expect": "e28"
+    },
+    {
+      "text": "open the menu bar settings",
+      "expect": "e27"
+    },
+    {
+      "text": "click family",
+      "expect": "e06"
+    },
+    {
+      "text": "click the apple account row",
+      "expect": "e05"
+    },
+    {
+      "text": "type keyboard in the search field",
+      "expect": "e04",
+      "intent": "type_text"
+    },
+    {
+      "text": "click the purple dinosaur",
+      "expect": "none"
+    },
+    {
+      "text": "the settings look different now",
+      "expect": "none"
+    }
+  ],
+  "elements": [
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 167,
+        "y": 96
+      },
+      "id": "e01",
+      "role": "button",
+      "secure": false,
+      "text": "close window",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 190,
+        "y": 96
+      },
+      "id": "e02",
+      "role": "button",
+      "secure": false,
+      "text": "minimize window",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 213,
+        "y": 96
+      },
+      "id": "e03",
+      "role": "button",
+      "secure": false,
+      "text": "zoom window",
+      "where": "top-left"
+    },
+    {
+      "editable": true,
+      "frame": {
+        "height": 28,
+        "width": 195,
+        "x": 167,
+        "y": 139
+      },
+      "id": "e04",
+      "role": "searchfield",
+      "secure": false,
+      "text": "Search",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 46,
+        "width": 215,
+        "x": 157,
+        "y": 176
+      },
+      "id": "e05",
+      "role": "row",
+      "secure": false,
+      "text": "User, Apple Account",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 222
+      },
+      "id": "e06",
+      "role": "row",
+      "secure": false,
+      "text": "Family",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 267
+      },
+      "id": "e07",
+      "role": "row",
+      "secure": false,
+      "text": "Wi‑Fi",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 299
+      },
+      "id": "e08",
+      "role": "row",
+      "secure": false,
+      "text": "Bluetooth",
+      "where": "middle-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 304
+      },
+      "id": "e09",
+      "role": "button",
+      "secure": false,
+      "text": "About",
+      "where": "center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 331
+      },
+      "id": "e10",
+      "role": "row",
+      "secure": false,
+      "text": "Network",
+      "where": "middle-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 347
+      },
+      "id": "e11",
+      "role": "button",
+      "secure": false,
+      "text": "Software Update",
+      "where": "center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 363
+      },
+      "id": "e12",
+      "role": "row",
+      "secure": false,
+      "text": "VPN",
+      "where": "middle-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 395
+      },
+      "id": "e13",
+      "role": "row",
+      "secure": false,
+      "text": "Battery",
+      "where": "middle-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 390
+      },
+      "id": "e14",
+      "role": "button",
+      "secure": false,
+      "text": "Storage",
+      "where": "center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 263,
+        "width": 6,
+        "x": 363,
+        "y": 423.5
+      },
+      "id": "e15",
+      "role": "button",
+      "secure": false,
+      "text": "",
+      "where": "bottom-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 440
+      },
+      "id": "e16",
+      "role": "row",
+      "secure": false,
+      "text": "General",
+      "where": "middle-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 442
+      },
+      "id": "e17",
+      "role": "button",
+      "secure": false,
+      "text": "AppleCare & Warranty",
+      "where": "center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 472
+      },
+      "id": "e18",
+      "role": "row",
+      "secure": false,
+      "text": "Accessibility",
+      "where": "middle-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 494
+      },
+      "id": "e19",
+      "role": "button",
+      "secure": false,
+      "text": "AirDrop & Continuity",
+      "where": "bottom-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 504
+      },
+      "id": "e20",
+      "role": "row",
+      "secure": false,
+      "text": "Appearance",
+      "where": "bottom-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 536
+      },
+      "id": "e21",
+      "role": "row",
+      "secure": false,
+      "text": "Apple Intelligence & Siri",
+      "where": "bottom-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 546
+      },
+      "id": "e22",
+      "role": "button",
+      "secure": false,
+      "text": "AutoFill & Passwords",
+      "where": "bottom-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 168,
+        "width": 6,
+        "x": 863,
+        "y": 536
+      },
+      "id": "e23",
+      "role": "button",
+      "secure": false,
+      "text": "",
+      "where": "bottom-right"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 568
+      },
+      "id": "e24",
+      "role": "row",
+      "secure": false,
+      "text": "Desktop & Dock",
+      "where": "bottom-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 589
+      },
+      "id": "e25",
+      "role": "button",
+      "secure": false,
+      "text": "Date & Time",
+      "where": "bottom-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 600
+      },
+      "id": "e26",
+      "role": "row",
+      "secure": false,
+      "text": "Displays",
+      "where": "bottom-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 632
+      },
+      "id": "e27",
+      "role": "row",
+      "secure": false,
+      "text": "Menu Bar",
+      "where": "bottom-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 632
+      },
+      "id": "e28",
+      "role": "button",
+      "secure": false,
+      "text": "Language & Region",
+      "where": "bottom-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 664
+      },
+      "id": "e29",
+      "role": "row",
+      "secure": false,
+      "text": "Spotlight",
+      "where": "bottom-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 675
+      },
+      "id": "e30",
+      "role": "button",
+      "secure": false,
+      "text": "Login Items & Extensions",
+      "where": "bottom-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 215,
+        "x": 157,
+        "y": 696
+      },
+      "id": "e31",
+      "role": "row",
+      "secure": false,
+      "text": "Wallpaper",
+      "where": "bottom-left"
+    }
+  ],
+  "offscreen": [
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 718
+      },
+      "id": "o001",
+      "role": "button",
+      "secure": false,
+      "text": "Sharing",
+      "where": "bottom-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 761
+      },
+      "id": "o002",
+      "role": "button",
+      "secure": false,
+      "text": "Startup Disk",
+      "where": "bottom-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 42,
+        "width": 460,
+        "x": 392,
+        "y": 804
+      },
+      "id": "o003",
+      "role": "button",
+      "secure": false,
+      "text": "Time Machine",
+      "where": "bottom-center"
+    }
+  ]
+}

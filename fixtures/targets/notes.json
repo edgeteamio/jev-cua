@@ -1,0 +1,663 @@
+{
+  "app": "Notes",
+  "bundleId": "com.apple.Notes",
+  "commands": [
+    {
+      "text": "click new note",
+      "expect": "e04",
+      "altIntents": [
+        "new_note"
+      ]
+    },
+    {
+      "text": "click the share button",
+      "expect": "e10"
+    },
+    {
+      "text": "open the folders list",
+      "expect": "e02"
+    },
+    {
+      "text": "click add folder",
+      "expect": "e01"
+    },
+    {
+      "text": "click format",
+      "expect": "e05"
+    },
+    {
+      "text": "insert a checklist",
+      "expect": "e06"
+    },
+    {
+      "text": "insert a table",
+      "expect": "e07"
+    },
+    {
+      "text": "click media",
+      "expect": "e08"
+    },
+    {
+      "text": "open writing tools",
+      "expect": "e09"
+    },
+    {
+      "text": "click more",
+      "expect": "e11"
+    },
+    {
+      "text": "click view options",
+      "expect": "e03"
+    },
+    {
+      "text": "click quick notes",
+      "expect": "e16"
+    },
+    {
+      "text": "open the shared folder",
+      "expect": "e19"
+    },
+    {
+      "text": "click all icloud",
+      "expect": "e22"
+    },
+    {
+      "text": "open the notes folder",
+      "expect": "e24"
+    },
+    {
+      "text": "click the first note",
+      "expect": "e20"
+    },
+    {
+      "text": "select the second note",
+      "expect": "e23"
+    },
+    {
+      "text": "close the window",
+      "expect": "e13"
+    },
+    {
+      "text": "open the recipes folder",
+      "expect": "e25"
+    },
+    {
+      "text": "click the work folder",
+      "expect": "e29"
+    },
+    {
+      "text": "open the archive folder",
+      "expect": "e31"
+    },
+    {
+      "text": "type groceries in the search field",
+      "expect": "e12",
+      "intent": "type_text"
+    },
+    {
+      "text": "click the purple dinosaur",
+      "expect": "none"
+    },
+    {
+      "text": "my notes are a mess",
+      "expect": "none"
+    }
+  ],
+  "elements": [
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 44,
+        "x": 135,
+        "y": 60
+      },
+      "id": "e01",
+      "role": "button",
+      "secure": false,
+      "text": "Add Folder",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 44,
+        "x": 179,
+        "y": 60
+      },
+      "id": "e02",
+      "role": "button",
+      "secure": false,
+      "text": "Folders",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 44,
+        "x": 467,
+        "y": 60
+      },
+      "id": "e03",
+      "role": "menubutton",
+      "secure": false,
+      "text": "View Options",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 45,
+        "x": 520,
+        "y": 60
+      },
+      "id": "e04",
+      "role": "button",
+      "secure": false,
+      "text": "New Note",
+      "where": "top-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 45,
+        "x": 714,
+        "y": 60
+      },
+      "id": "e05",
+      "role": "button",
+      "secure": false,
+      "text": "Format",
+      "where": "top-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 40,
+        "x": 759,
+        "y": 60
+      },
+      "id": "e06",
+      "role": "button",
+      "secure": false,
+      "text": "Checklist",
+      "where": "top-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 41,
+        "x": 799,
+        "y": 60
+      },
+      "id": "e07",
+      "role": "button",
+      "secure": false,
+      "text": "Table",
+      "where": "top-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 37,
+        "x": 840,
+        "y": 60
+      },
+      "id": "e08",
+      "role": "menubutton",
+      "secure": false,
+      "text": "Media",
+      "where": "top-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 52,
+        "width": 42,
+        "x": 877,
+        "y": 60
+      },
+      "id": "e09",
+      "role": "button",
+      "secure": false,
+      "text": "Writing Tools",
+      "where": "top-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 38,
+        "width": 38,
+        "x": 1071,
+        "y": 67
+      },
+      "id": "e10",
+      "role": "button",
+      "secure": false,
+      "text": "Share",
+      "where": "top-right"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 38,
+        "width": 38,
+        "x": 1115,
+        "y": 67
+      },
+      "id": "e11",
+      "role": "menubutton",
+      "secure": false,
+      "text": "More",
+      "where": "top-right"
+    },
+    {
+      "editable": true,
+      "frame": {
+        "height": 36,
+        "width": 325,
+        "x": 1168,
+        "y": 68
+      },
+      "id": "e12",
+      "role": "searchfield",
+      "secure": false,
+      "text": "",
+      "where": "top-right"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 33,
+        "y": 78
+      },
+      "id": "e13",
+      "role": "button",
+      "secure": false,
+      "text": "close window",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 56,
+        "y": 78
+      },
+      "id": "e14",
+      "role": "button",
+      "secure": false,
+      "text": "minimize window",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 79,
+        "y": 78
+      },
+      "id": "e15",
+      "role": "button",
+      "secure": false,
+      "text": "full screen",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 200,
+        "x": 23,
+        "y": 112
+      },
+      "id": "e16",
+      "role": "row",
+      "secure": false,
+      "text": "Quick Notes, 1 note",
+      "where": "top-left",
+      "container": "Folders"
+    },
+    {
+      "editable": true,
+      "frame": {
+        "height": 762,
+        "width": 985,
+        "x": 516,
+        "y": 112
+      },
+      "id": "e17",
+      "role": "textarea",
+      "secure": false,
+      "text": "",
+      "where": "middle-right"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 40,
+        "width": 292,
+        "x": 223,
+        "y": 122
+      },
+      "id": "e18",
+      "role": "row",
+      "secure": false,
+      "text": "Today",
+      "where": "top-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 200,
+        "x": 23,
+        "y": 144
+      },
+      "id": "e19",
+      "role": "row",
+      "secure": false,
+      "text": "Shared, 3 notes",
+      "where": "top-left",
+      "container": "Folders"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 68,
+        "width": 292,
+        "x": 223,
+        "y": 162
+      },
+      "id": "e20",
+      "role": "row",
+      "secure": false,
+      "text": "No additional text 10:39 PM move Notes",
+      "where": "top-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 19,
+        "width": 200,
+        "x": 23,
+        "y": 189
+      },
+      "id": "e21",
+      "role": "row",
+      "secure": false,
+      "text": "iCloud",
+      "where": "top-left",
+      "container": "Folders"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 200,
+        "x": 23,
+        "y": 208
+      },
+      "id": "e22",
+      "role": "row",
+      "secure": false,
+      "text": "All iCloud, 224 notes",
+      "where": "top-left",
+      "container": "Folders"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 68,
+        "width": 292,
+        "x": 223,
+        "y": 230
+      },
+      "id": "e23",
+      "role": "row",
+      "secure": false,
+      "text": "No additional text 7:56 PM move Notes",
+      "where": "top-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 200,
+        "x": 23,
+        "y": 240
+      },
+      "id": "e24",
+      "role": "row",
+      "secure": false,
+      "text": "Notes, 43 notes",
+      "where": "top-left",
+      "container": "Folders"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 200,
+        "x": 23,
+        "y": 272
+      },
+      "id": "e25",
+      "role": "row",
+      "secure": false,
+      "text": "Recipes, 4 notes",
+      "where": "top-left",
+      "container": "Folders"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 200,
+        "x": 23,
+        "y": 304
+      },
+      "id": "e26",
+      "role": "row",
+      "secure": false,
+      "text": "Travel, 1 note",
+      "where": "top-left",
+      "container": "Folders"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 68,
+        "width": 292,
+        "x": 223,
+        "y": 298
+      },
+      "id": "e27",
+      "role": "row",
+      "secure": false,
+      "text": "No additional text 7:37 PM move Notes",
+      "where": "top-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 200,
+        "x": 23,
+        "y": 336
+      },
+      "id": "e28",
+      "role": "row",
+      "secure": false,
+      "text": "Projects, 5 notes",
+      "where": "middle-left",
+      "container": "Folders"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 200,
+        "x": 23,
+        "y": 368
+      },
+      "id": "e29",
+      "role": "row",
+      "secure": false,
+      "text": "Work, 28 notes",
+      "where": "middle-left",
+      "container": "Folders"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 68,
+        "width": 292,
+        "x": 223,
+        "y": 366
+      },
+      "id": "e30",
+      "role": "row",
+      "secure": false,
+      "text": "No additional text 6:35 PM move Notes",
+      "where": "middle-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 32,
+        "width": 200,
+        "x": 23,
+        "y": 400
+      },
+      "id": "e31",
+      "role": "row",
+      "secure": false,
+      "text": "Archive, 143 notes",
+      "where": "middle-left",
+      "container": "Folders"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 68,
+        "width": 292,
+        "x": 223,
+        "y": 434
+      },
+      "id": "e32",
+      "role": "row",
+      "secure": false,
+      "text": "No additional text 6:22 PM move Notes",
+      "where": "middle-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 40,
+        "width": 292,
+        "x": 223,
+        "y": 522
+      },
+      "id": "e33",
+      "role": "row",
+      "secure": false,
+      "text": "July",
+      "where": "middle-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 68,
+        "width": 292,
+        "x": 223,
+        "y": 562
+      },
+      "id": "e34",
+      "role": "row",
+      "secure": false,
+      "text": "Shared list",
+      "where": "middle-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 40,
+        "width": 292,
+        "x": 223,
+        "y": 650
+      },
+      "id": "e35",
+      "role": "row",
+      "secure": false,
+      "text": "2025",
+      "where": "bottom-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 68,
+        "width": 292,
+        "x": 223,
+        "y": 690
+      },
+      "id": "e36",
+      "role": "row",
+      "secure": false,
+      "text": "Reading list",
+      "where": "bottom-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 68,
+        "width": 292,
+        "x": 223,
+        "y": 758
+      },
+      "id": "e37",
+      "role": "row",
+      "secure": false,
+      "text": "ClickUp for overall team tasks 11/15/25 move EdgeTeam",
+      "where": "bottom-left",
+      "container": "My Notes as List"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 68,
+        "width": 292,
+        "x": 223,
+        "y": 826
+      },
+      "id": "e38",
+      "role": "row",
+      "secure": false,
+      "text": "Would you be interested in presenting to our mastermind? Yes",
+      "where": "bottom-left",
+      "container": "My Notes as List"
+    }
+  ],
+  "offscreen": []
+}

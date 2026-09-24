@@ -1,0 +1,8 @@
+#!/bin/bash
+# Build (debug) and run the CLI from the package root: scripts/jev-cua doctor --live
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+source scripts/env.sh
+"$SWIFT" build 2>&1 | grep -E 'error|warning: unre' || true
+exec "$ROOT/.build/debug/jev-cua" "$@"
