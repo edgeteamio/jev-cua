@@ -508,6 +508,13 @@ new build, and the full suite 6/7: the Chrome case failed with Chrome's profile 
 again, its known limit. `jev-cua lab --cache` now takes an absolute path (it was nested under the
 repo).
 
+**Focus guards (2026-09-28).** In one sessions run (`runs/2026-09-28T12-42-41Z`) another window
+took focus mid-case: a Return decided for Notes was sent to the app in front, and the next phrase,
+decided with that app in front, replaced the text of its focused field. The executor now checks
+the front app before Return, Escape, and a scroll, as it already did before typing and menu
+commands, and the sessions suite stops a case when anything but the case's own `open_app` moved
+focus between phrases, reporting it as interrupted (not counted) instead of acting.
+
 ## Phase 4 status (2026-09-20): complete
 
 `AXWalker` walks the focused window with one `AXUIElementCopyMultipleAttributeValues` per node,

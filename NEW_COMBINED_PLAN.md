@@ -983,5 +983,10 @@ TypeSafe docs to keep open: `docs.typesafe.ai/concepts/how-to-build-with-system-
   unrelated and 0 false fires throughout. Answer validation accepts a pick within 0.02 of the
   argmax, the sum's tolerance; near-ties had dropped whole responses. Not adopted: a lower
   `followupConfidence` (where chatter was judged unrelated, supplies_text reached at most 0.47,
-  0.46 on q25; a lower bar would spend that margin for every action) and a code rule for Return (the question was the
-  cause, and fixing it moved every Return line above 0.87).
+  0.46 on q25; a lower bar would spend that margin for every action) and a code rule for Return
+  (the question was the cause, and fixing it moved every Return line above 0.87).
+- 2026-09-28, focus guards. A sessions run with another window taking focus mid-case sent a
+  Return decided for Notes to that window, then replaced the text of its field on a phrase decided
+  with it in front. Keys and scrolls now recheck the front app before sending (section 11's
+  precondition recheck, which typing and menu commands already had); the sessions suite stops a
+  case whose focus moved between phrases and reports it as interrupted.

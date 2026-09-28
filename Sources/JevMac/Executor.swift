@@ -54,6 +54,16 @@ public actor MacExecutor: Executing {
                 return outcome(candidate, t0, .failed, "focused field changed before typing", .failed, .fieldValue, "no matching field", "re-observe")
             }
         }
+        // Keys and scrolls go to whatever is in front, so the same recheck: a Return decided for
+        // Notes reached another app when focus moved mid-run (sessions run 2026-09-28T12-42-41Z).
+        switch candidate.action {
+        case .pressEnter, .pressEscape, .scroll:
+            let now = Apps.frontmost()
+            if now.bundleId != observation.app.bundleId {
+                return outcome(candidate, t0, .failed, "frontmost app changed before the key", .failed, .frontmostApp, "app \(now.name)", "re-observe")
+            }
+        default: break
+        }
         switch candidate.action {
         case .openApp(let bundleId, let name): return await openApp(candidate, t0, bundleId: bundleId, name: name)
         case .newNote: return await newNote(candidate, t0)
