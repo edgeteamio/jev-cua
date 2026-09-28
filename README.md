@@ -254,9 +254,11 @@ chip settles. `--ui pill` restores the bottom-center pill; `--no-overlay` hides 
 `jev-cua ui-preview` renders every state to `runs/ui-preview/*.png` without a microphone.
 
 **Menu-bar icon.** An SF Symbol template image, so it follows the menu bar's appearance: a
-microphone while listening, a waveform while you speak, a crossed microphone when paused. The
-tooltip names the state and flags dry runs. Its menu: Listening (⌃⌥Space), Spoken feedback,
-Show overlay, Open runs folder, Quit.
+microphone while listening, a waveform while you speak, a crossed microphone when paused, a
+network warning while Jev is unreachable. The tooltip names the state and flags dry runs. Its
+menu: Listening (⌃⌥J), Hold ⌃⌥J to talk, What can I say?, Recent actions, Undo last action,
+Spoken feedback, Sounds, Show overlay, Show all speech, Open runs folder, Quit (see the voice-loop
+UX pass below).
 
 Utterance boundaries live in `UtteranceAssembler` (pure, tested): the recognizer's chunked finals
 plus the volatile tail form one utterance until everything is finalized and the mic has been quiet
@@ -416,6 +418,102 @@ to run for which change, and that every ad hoc phrase sequence or goal is propos
 **Notch polish.** Chips read as a person would say them ("Open Notes", "New note", "Retitle
 “groceries”", "Scroll down ×3", "File › Close" as "Close") instead of action kinds; evidence
 arrows are "→"; the collapsed indicator is brighter with a soft glow so it reads on the band.
+
+**Voice-loop UX pass (2026-09-28, from a review of the 17 live `run` sessions in `runs/`).**
+Over 54 live dispatches, last word → dispatch was 941 ms at p50 against the plan's 600 ms: the
+early-fire intents met it (`open_app` 504, `open_site` 519, `scroll_down` 455 ms) and everything
+that waits for a committed clause did not (`type_text` 956, `web_search` 1139, `click_element`
+1233 ms). The narrated session of 2026-09-24 named the rest: the status line flickered "not a
+command" several times a second, "Wikipedia for Sweden" searched `for Sweden`, and "or Sweden" on
+a Wikipedia page went to Google. Policy version p2. What changed:
+
+- *One commit window* (`Policy.commitWindowMs`). Gate 4 held free text for `silenceCompleteMs`
+  (900), so the 600 ms `payloadSilenceMs` check behind it never bound. The window is now one
+  function per intent; it returns 900 for every intent until the owner picks the rule (6 of 118
+  in-phrase word gaps in the logs fell between 600 and 900 ms, so shorter is not free).
+- *Armed decisions.* A clause waiting only for the words to stop shows its action as a dashed
+  ghost chip ("⋯ Search google for “Minnesota Vikings”"); when the window passes with the words
+  unchanged, the tick runs the policy again on the answers in hand and acts, with no second Jev
+  call (~160 ms whenever the cache missed), logged with trigger `armed`. Once per revision;
+  element-targeted actions are shown but decided again, since their element may have moved.
+- *Only what needs you reaches the status line* (`Feedback`): no "deciding…", no chatter, no
+  timing waits; a finished clause missing something ("search for what?", "no field focused"), a
+  refusal, a cancellation. Chatter keeps the notch folded while the dot brightens with your voice;
+  "Show all speech" restores the old behavior.
+- *The site in front.* Session decisions now send `page_host` (as goal mode does); a search that
+  names no site searches the catalog site open in the browser, else Google. `cleanQuery` drops a
+  leading "for" or "about" ("Wikipedia for Sweden" → `Sweden`).
+- *Confirmations lapse* after `candidateTtlMs` (8 s); the constant was never read, so a "yes"
+  minutes later still ran a gated action and the notch stayed open on the prompt.
+- *Chimes for state changes.* Pause, resume, a hold, and "stop" play a system sound (the mic is
+  muted for the chime's own length, 0.1 to 0.5 s) instead of speaking, which muted it for about a
+  second and cost the first words of the next command. "Sounds" toggles them.
+- *Outages.* A transport error, timeout, 5xx, overload, or rejected key turns the dot orange, shows
+  "can't reach Jev · timed out", and is spoken once; the next answer clears it. The live app's
+  client gives up after 2 s (the CLI keeps 5): a decision that old is stale.
+- *Hold-to-talk* (`--hold-to-talk`, or the menu; remembered). Nothing is heard or sent to Jev
+  until ⌃⌥J is held; on release the recognizer gets 350 ms for its last words, the utterance goes
+  to the session as final (release is the end of speech, no silence window), and the gate closes
+  without cancelling anything. Words the recognizer repeats across a release are stripped, and a
+  key-state poll catches a release both key paths missed.
+- *Discoverability and undo.* "What can I say?" (or the menu item, or a click on the notch in
+  hold mode) shows examples for the app and page in front, answered in code with no model call;
+  hovering the notch suggests one. "Recent actions" lists the last eight with their outcome, and
+  "Undo last action" reverses only what has a safe inverse: Back after a navigation in the
+  current tab, Edit › Undo after typing or a new note, through the executor with verification.
+
+- *The lock screen.* The first sessions run of this pass (`runs/2026-09-28T12-02-04Z`) went on a
+  locked Mac: every case failed with `loginwindow` in front, as `AGENTS.md` warns, and one case's
+  Return reached the lock screen. While `com.apple.loginwindow` is in front nothing is decided or
+  run and the words are dropped, so nothing said near a locked Mac goes to Jev either; it is also
+  on the deny list.
+
+Tests: 104 unit and replay tests (18 new), 112 replay scenarios (3 new: the open-page search, a
+search fired from its armed decision, a lapsing confirmation). Labs with `--installed-apps`
+unchanged: calibration 52/52, held-out 21/21, realistic 31/31 (the live "let's do let's
+Wikipedia for Sweden" added), 100% app/site/span, 0 premature, 0 false fires. `jev-cua
+ui-preview` renders the new states (armed, chatter, examples, offline, hold idle). Sessions suite
+on an unlocked screen (`runs/2026-09-28T12-10-14Z`): 6/7. The Chrome menu command case passes
+with the profile picker closed and is untagged. "Title then body on its own line" missed: the
+bare phrase "milk and eggs" after Return scored follow-up 0.54 against the 0.60 bar, so it was
+taken for chatter. Jev scored the same state 0.63 to 0.77 on 2026-09-22; the state differs only
+in the note list on screen (32 elements, not 34), so this is a margin that was always thin, not
+a change in what Jev sees.
+
+**Follow-ups after Return (2026-09-28, #18).** The followup question (q10) called a phrase
+`supplies_text` when it had "no command verb of its own" and came "right after the computer
+opened a site, a search, an app, or a note": nothing covered Return, and the lines of a list have
+verbs. Lab fixtures can now carry a scene (focused field, last action), which asks the followup
+head, and `fixtures/utterances.followups.json` holds ten follow-ups (six lines after Return in a
+note, four of the kinds that already worked) and seven chatter lines in the same scenes, none of
+them the question's own examples. Three fresh live runs each way:
+
+| | before (q25) | after (q26) |
+|---|---|---|
+| follow-ups fired | 8/10, 8/10, 8/10 | 10/10, 10/10, 10/10 |
+| "call the plumber about the sink" after Return | supplies_text 0.37 to 0.46 | 0.95 to 0.96 |
+| "renew the car registration" after Return | 0.34, or malformed twice | 0.88 to 0.89 |
+| the other Return lines | 0.67 to 0.96 | 0.94 to 0.98 |
+| chatter (7 lines) | unrelated, 0 fired | unrelated, 0 fired |
+
+q26 says supplies_text also follows "pressed Return to start a new line", that a list item keeps
+its everyday verbs and is still text, and that a remark about what someone said or did is
+narration (without that last clause the narration line after a new note fell to unrelated 0.48;
+with it 0.75 to 0.82, above q25's 0.72 to 0.75). The two malformed answers were an `intent` pick
+of 'none' at 0.43 beside 'type_text' at 0.44: validation now accepts a pick within 0.02 of the
+argmax (the sum's own tolerance), since rejecting it threw away every other head's answer. The
+followup head is only asked when there is a last action, so the other labs did not move (0 live
+calls; calibration 52/52, held-out 21/21, realistic 31/31). The sessions case passed 5/5 on the
+new build, and the full suite 6/7: the Chrome case failed with Chrome's profile picker open
+again, its known limit. `jev-cua lab --cache` now takes an absolute path (it was nested under the
+repo).
+
+**Focus guards (2026-09-28).** In one sessions run (`runs/2026-09-28T12-42-41Z`) another window
+took focus mid-case: a Return decided for Notes was sent to the app in front, and the next phrase,
+decided with that app in front, replaced the text of its focused field. The executor now checks
+the front app before Return, Escape, and a scroll, as it already did before typing and menu
+commands, and the sessions suite stops a case when anything but the case's own `open_app` moved
+focus between phrases, reporting it as interrupted (not counted) instead of acting.
 
 ## Phase 4 status (2026-09-20): complete
 

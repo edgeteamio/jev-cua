@@ -9,6 +9,14 @@
       "note": "code strips latest + YouTube videos, sorts newest first"
     },
     {
+      "text": "let's do let's Wikipedia for Sweden",
+      "intent": "web_search",
+      "site": "wikipedia",
+      "span": "sweden",
+      "minWords": 6,
+      "note": "live 2026-09-24 ('let's do let's Wikipedia for Sweden') searched `for Sweden`; code drops the word joining a site to its query (policy p2)"
+    },
+    {
       "text": "when do the vikings play next",
       "intent": "web_search",
       "span": "when do the vikings play next",

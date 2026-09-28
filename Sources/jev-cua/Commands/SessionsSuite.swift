@@ -52,7 +52,7 @@ enum SessionsSuite {
         cfg.runningApps = Set(NSWorkspaceRunning.names())
 
         var lines: [String] = []
-        var totals = (passed: 0, runs: 0)
+        var totals = (passed: 0, runs: 0, interrupted: 0)
         for c in suite.cases where only == nil || c.name.localizedCaseInsensitiveContains(only!) {
             var p = 0, n = 0
             var notes: [String] = []
@@ -62,13 +62,31 @@ enum SessionsSuite {
                 let trace = Trace()
                 let session = CommandSession(decider: decider, perception: perception, executor: executor, log: log, config: cfg) { trace.on($0) }
                 let t0 = Mono.now()
+                // The app the case should have in front: the setup's, moved only by the case's own
+                // `open_app`. Anything else in front means something outside the run took focus (a
+                // click on another window), and the phrases would act there: on 2026-09-28 a
+                // Return and a replace-all reached another app's text box. Stop the case instead.
+                var expected = c.setup?.open_app ?? Apps.frontmost().name
+                var interrupted: String? = nil
                 for (i, text) in c.phrases.enumerated() {
+                    let front = Apps.frontmost()
+                    if front.name != expected { interrupted = "focus moved to \(front.name) before phrase \(i + 1)"; break }
+                    let before = trace.actions.count
                     await session.handleTranscript(TranscriptRevision(utteranceId: "case-\(i + 1)", text: text, isFinal: true, at: Mono.now()))
                     for _ in 0..<600 {
                         try? await Task.sleep(for: .milliseconds(25))
                         if await session.isIdle { break }
                     }
                     await session.endUtterance(reason: "typed")
+                    for a in trace.actions.dropFirst(before) where a.hasPrefix("open_app ") { expected = String(a.dropFirst("open_app ".count)) }
+                }
+                if interrupted == nil, Apps.frontmost().name != expected { interrupted = "focus moved to \(Apps.frontmost().name) before the evidence check" }
+                if let interrupted {
+                    totals.interrupted += 1
+                    notes.append(String(format: "  r%d INTERRUPTED: %@ (not a result; re-run with nothing else in front) | %.1f s | %@", r, interrupted,
+                                        Mono.now() - t0, trace.actions.joined(separator: " → ")))
+                    print(notes.last!)
+                    continue
                 }
                 try? await Task.sleep(for: .milliseconds(400))
                 await perception.invalidate()
@@ -87,6 +105,7 @@ enum SessionsSuite {
             totals.passed += p; totals.runs += n
         }
         let summary = "sessions: \(totals.passed)/\(totals.runs) passed, \(totals.runs - totals.passed) failed"
+            + (totals.interrupted > 0 ? ", \(totals.interrupted) interrupted (focus moved; not counted)" : "")
         print("\n" + summary)
         let out = log.directory.appending(path: "sessions.md")
         try ("# Session suite \(log.directory.lastPathComponent)\n\n" + summary + "\n\n```\n" + lines.joined(separator: "\n") + "\n```\n").write(to: out, atomically: true, encoding: .utf8)

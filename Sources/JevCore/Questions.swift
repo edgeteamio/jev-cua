@@ -6,7 +6,7 @@ import Foundation
 /// (ported from moritzkremb/jev-voice-browser src/constants.js): Jev reads literally, and
 /// overlapping options read as doubt.
 public enum Questions {
-    public static let version = "q25"  // q25: duplicated labels carry their row mates; q24: followup repeats_action (again/once more re-runs the last action); q23: menu_item intent and menu_target head; q22: type_placement head (replace a title or a field vs insert); q21: "with ... as the body" clauses; q20: app mentions count; q19: goal-mode span and field heads read history; q18: title clauses; q17: clause examples for verb-less and switch-back steps; q16: two-phase goal steps; q15: clauses in goal state, next_action reasons from them; q14: goal_achieved needs history evidence; q13: goal-mode heads, reobserve tied to history; q12: element container in descriptions; q11: questions count as web searches; q10: followup head; q9: site+query is web_search; q8: text_span examples; q7: command_span examples and joiner rule; q6: elements as compact strings, 60 cap; q5: click_target/type_target/offscreen_target heads; q4: "first command" scoping; q3: command_span head; q2: is_command examples widened (lab 2026-09-19)   // bump when any wording changes; part of the lab cache key via the request hash
+    public static let version = "q26"  // q26: followup covers text after Return and list items with everyday verbs (#18); q25: duplicated labels carry their row mates; q24: followup repeats_action (again/once more re-runs the last action); q23: menu_item intent and menu_target head; q22: type_placement head (replace a title or a field vs insert); q21: "with ... as the body" clauses; q20: app mentions count; q19: goal-mode span and field heads read history; q18: title clauses; q17: clause examples for verb-less and switch-back steps; q16: two-phase goal steps; q15: clauses in goal state, next_action reasons from them; q14: goal_achieved needs history evidence; q13: goal-mode heads, reobserve tied to history; q12: element container in descriptions; q11: questions count as web searches; q10: followup head; q9: site+query is web_search; q8: text_span examples; q7: command_span examples and joiner rule; q6: elements as compact strings, 60 cap; q5: click_target/type_target/offscreen_target heads; q4: "first command" scoping; q3: command_span head; q2: is_command examples widened (lab 2026-09-19)   // bump when any wording changes; part of the lab cache key via the request hash
 
     // MARK: Intent
 
@@ -438,11 +438,13 @@ public enum Questions {
     public static func followupQuestion() -> Question {
         .choice([
             "question": "How does `transcript` relate to `last_action`, which the computer just performed for the user?",
-            "focus": "supplies_text: the transcript is a topic, name, phrase, or search terms with no command verb of its own, spoken right after the computer opened a site, a search, an app, or a note, so it is what to look up or type there. repeats_action: the transcript asks to do `last_action` once more without naming a new one (again, do it again, once more, one more time, same again, do that again). new_command: the transcript is itself a command (it has a verb like open, search, type, scroll, click). unrelated: the transcript is conversation or narration, not directed at the computer.",
+            "focus": "supplies_text: the transcript is a topic, name, phrase, or search terms, spoken right after the computer opened a site, a search, an app, or a note, or pressed Return to start a new line in a note or field, so it is what to look up or type there. A list item or a line of a note keeps its everyday verbs (call the plumber, buy bread) and is still text to type, while a remark about what someone said or did (she told me, we went there) is narration. repeats_action: the transcript asks to do `last_action` once more without naming a new one (again, do it again, once more, one more time, same again, do that again). new_command: the transcript is itself a command for the computer (a verb like open, search, type, scroll, click, press). unrelated: the transcript is conversation or narration, not directed at the computer.",
             "examples": [
                 ["last_action open_site wikipedia; transcript 'mark zuckerberg'", "supplies_text"],
                 ["last_action open_app Notes; transcript 'groceries for the week'", "supplies_text"],
                 ["last_action web_search google 'cats'; transcript 'persian cats'", "supplies_text"],
+                ["last_action press_enter; transcript 'pick up the dry cleaning'", "supplies_text"],
+                ["last_action press_enter; transcript 'that should do it'", "unrelated"],
                 ["last_action scroll_down page; transcript 'again'", "repeats_action"],
                 ["last_action take_photo; transcript 'one more time'", "repeats_action"],
                 ["last_action scroll_down page; transcript 'do it again'", "repeats_action"],
@@ -453,7 +455,7 @@ public enum Questions {
                 ["last_action open_app Notes; transcript 'she told me about mark zuckerberg yesterday'", "unrelated"],
             ],
         ], [
-            followupSuppliesText: "The words are what the last action needs: search terms for the site or search just opened, or text for the note, field, or app just opened",
+            followupSuppliesText: "The words are what the last action needs: search terms for the site or search just opened, or text for the note, field, or app just opened, or for the new line Return just started",
             followupRepeatsAction: "A request to perform `last_action` again, with no new target of its own (again, do it again, once more, one more time)",
             followupNewCommand: "A new command with its own verb",
             followupUnrelated: "Conversation or narration, not meant for the computer",

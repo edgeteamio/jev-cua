@@ -54,8 +54,14 @@ public enum Config {
     /// A bare phrase counts as a follow-up to the last action only within this window.
     public static let followupWindowS = 15.0
     public static let payloadSilenceMs = 600
+    /// A confirmation nobody answers lapses after this long: a "yes" said minutes later, maybe to
+    /// someone in the room, must not run a gated action (review 2026-09-28: it never lapsed).
     public static let candidateTtlMs = 8000
     public static let snapshotTtlMs = 1500
+    /// The live voice app's Jev client gives up after this many seconds (the CLI keeps 5): a
+    /// decision this old is stale anyway, and a dead network should show as offline at once.
+    public static let liveDecisionTimeoutS = 2.0
+    public static let liveRetryDelayMs = 500
     /// Executor settle waits for bringing an app to the front (plan section 11).
     public static let activateWaitMs = 3000
     public static let coldLaunchWaitMs = 12000
@@ -126,6 +132,21 @@ public enum Config {
     public static let defaultSearchSite = "google"
     public static func site(option: String) -> SiteEntry? { sites.first { $0.option == option } }
 
+    /// The catalog site a browser host belongs to ("en.wikipedia.org" → wikipedia), matched on the
+    /// home page's registrable domain so a language or mobile subdomain still counts.
+    public static func site(forHost host: String?) -> SiteEntry? {
+        guard let host = host?.lowercased(), !host.isEmpty else { return nil }
+        return sites.first { s in
+            guard let home = URL(string: s.home)?.host?.lowercased() else { return false }
+            let domain = home.split(separator: ".").suffix(2).joined(separator: ".")
+            return host == domain || host.hasSuffix("." + domain)
+        }
+    }
+
+    /// Browsers: perception reads the front tab's host from them, and suggestions offer web commands.
+    public static let browserBundleIds: Set<String> = ["com.google.Chrome", "com.apple.Safari", "company.thebrowser.Browser", "com.brave.Browser",
+                                                       "org.mozilla.firefox", "com.microsoft.edgemac"]
+
     // MARK: Deny list (enforced in perception before the question, and in policy after the pick)
 
     public static let denyTerms: [String] = [
@@ -143,7 +164,12 @@ public enum Config {
         "com.apple.ScriptEditor2", "com.apple.Automator",               // scripting
         "com.apple.DiskUtility", "com.apple.ActivityMonitor",           // system tools
         "com.objective-see.lulu.app",                                   // the firewall
+        lockScreenBundleId,                                             // the lock screen
     ]
+
+    /// The lock screen's process. While it is in front nothing is decided or run: a sessions run
+    /// on a locked Mac (2026-09-28) sent a Return to it, and speech near a locked Mac went to Jev.
+    public static let lockScreenBundleId = "com.apple.loginwindow"
 
     public static func isDenied(text: String) -> Bool {
         let t = text.lowercased()

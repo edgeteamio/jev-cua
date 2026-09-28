@@ -46,6 +46,16 @@ public enum SessionEvent: Sendable, Equatable {
     case disambiguation([Element]?)
     case cancelled(reason: String)
     case error(String)
+    /// The action a clause will run once the words stop, shown while it waits (a ghost chip);
+    /// nil clears it. Sent when the previewed action changes, not on every revision.
+    case armed(Candidate?)
+    /// Jev cannot be reached (a few words why), or answers again (nil). Sent on changes only.
+    case offline(String?)
+    /// Example phrases for the app in front, answering "what can I say?".
+    case help([String])
+    /// A short line for the user that is not a decision: a lapsed confirmation, an undo that
+    /// cannot run.
+    case notice(String)
 }
 
 /// Time source, injectable so replay tests can run instantly.
@@ -92,6 +102,35 @@ public actor CommandSession {
     private var retryAt: TimeInterval?
     /// Badge choices after a `.disambiguate` decision: a spoken number resolves in code.
     private var choices: (elements: [Element], observation: Observation)?
+    /// When the pending confirmation was asked; it lapses after `candidateTtlMs`.
+    private var pendingAt: TimeInterval = 0
+    /// Non-nil while Jev is unreachable: the overlay shows it until the next answer arrives.
+    private var outage: String?
+    /// The lock screen was in front at the last decision (logged once per change).
+    private var screenLocked = false
+
+    /// A decision whose only wait is the commit window (review 2026-09-28, item 1b). Its preview
+    /// shows as a ghost chip; when the window passes with the words unchanged, the tick runs the
+    /// policy again on these answers and acts, with no second Jev call (live, that call cost ~160
+    /// ms whenever the cache missed). Element-targeted actions are shown but decided again at
+    /// silence, since their element may have moved.
+    private struct Armed {
+        var candidate: Candidate
+        var utteranceId: String
+        var revision: Int
+        var consumedGen: Int
+        var windowMs: Int
+        var direct: Bool
+        /// Fired once already for these words and still waiting: leave it to the silence path.
+        var fired: Bool
+        var unconsumed: String
+        var isFinal: Bool
+        var observation: Observation
+        var spans: SpanSet
+        var context: DecisionContext
+        var response: JevResponse
+    }
+    private var armed: Armed?
 
     // Scheduling
     private var inFlight: Task<Void, Never>?
@@ -105,6 +144,8 @@ public actor CommandSession {
     public private(set) var ledger: [LedgerEntry] = []
     public private(set) var recentActions: [String] = []
     private var lastAction: (action: Action, at: TimeInterval)?
+    /// The last action while it can still be reversed, with the app it ran in (status menu Undo).
+    private var undoable: (action: Action, detail: String, bundleId: String, appName: String)?
 
     public init(decider: any JevDeciding, perception: any Perceiving, executor: any Executing, log: RunLog,
                 clock: any Clock = SystemClock(), config: Config = Config(), onEvent: @escaping @Sendable (SessionEvent) -> Void = { _ in }) {
@@ -172,9 +213,17 @@ public actor CommandSession {
     /// Periodic tick (every ~100 ms from the mic loop, or explicit in tests): re-evaluates a
     /// waiting utterance once the silence window has passed.
     public func tick() async {
-        guard let u = utterance, inFlight == nil, !executing else { return }
         let now = clock.now()
+        expirePending(now: now)
+        guard let u = utterance, inFlight == nil, !executing else { return }
         let silent = silentMs(now: now)
+        // Armed for exactly these words: the commit window decides, on the answers in hand.
+        if let a = armed, a.direct, !a.fired, a.utteranceId == u.id, a.revision == u.revision, a.consumedGen == consumedGen, !isConsumedEntirely(u) {
+            if silent >= Double(a.windowMs) { await fire(a, silent: silent, stable: (now - lastChangeAt) * 1000); return }
+            // An early gate (word settling on a scroll) may still ask to look again sooner.
+            if let at = retryAt, now >= at { retryAt = nil; await decide(trigger: "retry") }
+            return
+        }
         if silent >= Double(config.silenceCompleteMs), !u.rawText.isEmpty, !isConsumedEntirely(u) {
             retryAt = nil
             await decide(trigger: "silence")
@@ -188,6 +237,7 @@ public actor CommandSession {
         inFlight?.cancel(); inFlight = nil; inFlightRevision = nil
         scheduled?.cancel(); scheduled = nil
         pending = nil
+        disarm()
         if choices != nil { choices = nil; onEvent(.disambiguation(nil)) }
         onEvent(.cancelled(reason: reason))
         onEvent(.pendingConfirmation(nil))
@@ -210,6 +260,52 @@ public actor CommandSession {
         let rest = Transcript.stripConsumed(raw: u.rawText, consumedPrefix: consumedPrefix) ?? ""
         log.log("utterance_end", ["utterance": .string(u.id), "reason": .string(reason), "unconsumed": log.text(rest)])
         utterance = nil; consumedPrefix = ""; consumedGen = 0; previousIntent = nil; retryAt = nil
+        disarm()
+    }
+
+    /// "What can I say?" (spoken, or the status menu): example phrases for the app in front.
+    public func showHelp() async {
+        let obs = await perception.observe()
+        let phrases = Suggestions.phrases(bundleId: obs.app.bundleId, pageHost: obs.pageHost)
+        log.log("help", ["app": .string(obs.app.name), "phrases": .number(Double(phrases.count))])
+        onEvent(.help(phrases))
+    }
+
+    /// The status menu's "Undo last action": the inverse of the last action, in the app it ran
+    /// in, through the executor and its verification like any other action.
+    public func undoLast() async {
+        guard !executing, inFlight == nil else { onEvent(.notice("busy, try again in a moment")); return }
+        guard let u = undoable, let inverse = Undo.inverse(of: u.action, detail: u.detail) else { onEvent(.notice("nothing to undo")); return }
+        let obs = await perception.observe()
+        guard obs.app.bundleId == u.bundleId else { onEvent(.notice("switch back to \(u.appName) to undo")); return }
+        undoable = nil
+        log.log("undo", ["action": log.text(u.action.summary)])
+        let c = Candidate(id: Ident.make("c"), snapshotId: obs.snapshotId, action: inverse, expectedPostcondition: "reversed \(u.action.summary)")
+        await dispatch(c, observation: obs, utteranceId: utterance?.id ?? "undo", revision: utterance?.revision ?? 0, decidedAt: clock.now(), spoken: false)
+    }
+
+    /// A confirmation nobody answered lapses (review 2026-09-28, item 2c): before this, a "yes"
+    /// minutes later still ran it, and the notch stayed open on the prompt.
+    private func expirePending(now: TimeInterval) {
+        guard let p = pending, (now - pendingAt) * 1000 >= Double(JevCore.Config.candidateTtlMs) else { return }
+        pending = nil
+        log.log("pending_expired", ["action": log.text(p.action.summary)])
+        onEvent(.pendingConfirmation(nil))
+        onEvent(.notice("confirmation lapsed: \(p.action.humanLabel)"))
+    }
+
+    /// Reports an outage once when it starts and once when Jev answers again.
+    private func noteOutage(_ message: String?) {
+        guard (outage == nil) != (message == nil) else { return }
+        outage = message
+        log.log(message == nil ? "online" : "offline", message.map { ["why": .string($0)] } ?? [:])
+        onEvent(.offline(message))
+    }
+
+    private func disarm() {
+        guard armed != nil else { return }
+        armed = nil
+        onEvent(.armed(nil))
     }
 
     // MARK: Scheduling
@@ -254,6 +350,17 @@ public actor CommandSession {
     private func decide(trigger: String) async {
         guard let u = utterance, inFlight == nil, !executing else { rerunRequested = inFlight != nil; return }
         guard let unconsumed = Transcript.stripConsumed(raw: u.rawText, consumedPrefix: consumedPrefix), !unconsumed.isEmpty else { return }
+        // "What can I say?": answered in code, once the phrase has ended (it could still grow).
+        if Spans.isHelpPhrase(unconsumed) {
+            let silent = silentMs(now: clock.now())
+            if u.isFinal || silent >= Double(JevCore.Config.payloadSilenceMs) {
+                consume(unconsumed, of: unconsumed)
+                await showHelp()
+            } else {
+                retryAt = clock.now() + Double(JevCore.Config.payloadSilenceMs - Int(silent)) / 1000
+            }
+            return
+        }
         let revision = u.revision
         let isFinal = u.isFinal
         let physicalId = u.physicalId
@@ -285,7 +392,15 @@ public actor CommandSession {
     public var isIdle: Bool { inFlight == nil && scheduled == nil && !executing && !rerunRequested }
 
     private func runDecision(utteranceId: String, revision: Int, unconsumed: String, isFinal: Bool, silent: Double, stable: Double, trigger: String) async {
+        expirePending(now: clock.now())
         let observation = await perception.observe()
+        // The screen is locked: nothing may run, and nothing said near a locked Mac goes to Jev.
+        if observation.app.bundleId == JevCore.Config.lockScreenBundleId {
+            if !screenLocked { screenLocked = true; log.log("screen_locked") }
+            if utterance?.physicalId == utteranceId { consume(unconsumed, of: unconsumed) }   // done with: none of it runs later
+            return
+        }
+        if screenLocked { screenLocked = false; log.log("screen_unlocked") }
         let spans = Spans.extract(from: unconsumed)
         var ctx = DecisionContext(rawTranscript: unconsumed, isFinal: isFinal, frontmostApp: observation.app.name,
                                   frontmostBundleId: observation.app.bundleId, focusedField: observation.focusedField,
@@ -295,6 +410,9 @@ public actor CommandSession {
         ctx.offscreen = observation.offscreen
         ctx.menus = Questions.relevantMenus(observation.menus, transcript: unconsumed)
         ctx.afterConsumed = !consumedPrefix.isEmpty
+        // The front tab's host, never its path or title (goal mode already sends it): an unnamed
+        // search stays on the site in front (review 2026-09-28, item 2a).
+        ctx.pageHost = observation.pageHost
         if let la = lastAction, clock.now() - la.at <= JevCore.Config.followupWindowS {
             ctx.lastAction = la.action; ctx.lastActionAgeS = clock.now() - la.at
         }
@@ -310,16 +428,28 @@ public actor CommandSession {
             log.recordJevCancelled(); return
         } catch let e as JevError {
             if case .cancelled = e { log.recordJevCancelled(); return }
-            onEvent(.error(e.description)); log.log("jev_error", ["error": .string(e.description)]); return
+            log.log("jev_error", ["error": .string(e.description)])
+            // An outage shows until Jev answers again (item 3b); a bad answer is a one-off.
+            if e.isOutage { noteOutage(e.outageSummary) } else { onEvent(.error(e.description)) }
+            return
         } catch {
             onEvent(.error("\(error)")); log.log("jev_error", ["error": .string("\(error)")]); return
         }
         if Task.isCancelled { log.recordJevCancelled(); return }
         log.recordJev(resp)
+        noteOutage(nil)
 
         // Superseded while in flight: still evaluate, but as a non-final, non-silent revision so
         // only allowlisted actions can fire and free text is never truncated (plan 9.4).
         let superseded = utterance?.revision != revision || utterance?.physicalId != utteranceId
+        await conclude(utteranceId: utteranceId, revision: revision, unconsumed: unconsumed, isFinal: isFinal, silent: silent, stable: stable,
+                       trigger: trigger, observation: observation, spans: spans, ctx: ctx, resp: resp, superseded: superseded, decidedAt: t0)
+    }
+
+    /// Evaluates the policy on answers in hand, logs the decision, and acts on it: for a fresh Jev
+    /// answer, and for an armed decision whose commit window just passed.
+    private func conclude(utteranceId: String, revision: Int, unconsumed: String, isFinal: Bool, silent: Double, stable: Double, trigger: String,
+                          observation: Observation, spans: SpanSet, ctx: DecisionContext, resp: JevResponse, superseded: Bool, decidedAt t0: TimeInterval) async {
         let intent = resp.answers["intent"]?.choice?.choice ?? "none"
         let input = PolicyInput(answers: resp.answers, spans: spans, context: superseded ? { var c = ctx; c.isFinal = false; return c }() : ctx,
                                 silentMs: superseded ? 0 : silent, intentStable: previousIntent == intent,
@@ -354,17 +484,20 @@ public actor CommandSession {
         switch policy.outcome {
         case .act:
             guard let candidate = policy.candidate else { return }
+            armed = nil   // no event: the dispatch's chip takes the ghost chip's place
             let remainder = consume(policy.commandSpan ?? unconsumed, of: unconsumed)
             if pending?.id == candidate.id { pending = nil; onEvent(.pendingConfirmation(nil)) }
             await dispatch(candidate, observation: observation, utteranceId: utteranceId, revision: revision, decidedAt: t0)
             if Transcript.wordCount(remainder) >= 2 { rerunRequested = true }
         case .confirm:
             guard let candidate = policy.candidate else { return }
+            disarm()
             let remainder = consume(policy.commandSpan ?? unconsumed, of: unconsumed)
-            pending = candidate; pendingRevision = revision
+            pending = candidate; pendingRevision = revision; pendingAt = clock.now()
             onEvent(.pendingConfirmation(candidate))
             if Transcript.wordCount(remainder) >= 2 { rerunRequested = true }
         case .ignore(let reason):
+            disarm()
             if reason == "cancelled" { _ = consume(unconsumed, of: unconsumed); pending = nil; onEvent(.pendingConfirmation(nil)) }
             // Chatter judged on a committed clause is done with: consume it so a command that
             // follows in the same breath is judged on its own words ("...go after it | open the
@@ -374,16 +507,62 @@ public actor CommandSession {
                 _ = consume(unconsumed, of: unconsumed)
                 log.log("chatter_consumed", ["text": log.text(unconsumed)])
             }
-        case .wait(let reason, let retry):
+        case .wait(_, let retry):
             // A wait that names a retry interval (word stability, payload silence) gets one from
             // the next tick after it: revisions may have stopped, and the silence tick is 900 ms away.
             if let retry { retryAt = clock.now() + Double(retry) / 1000 }
-            _ = reason
+            if !superseded {
+                updateArmed(policy: policy, input: input, utteranceId: utteranceId, revision: revision, unconsumed: unconsumed, isFinal: isFinal,
+                            observation: observation, spans: spans, resp: resp)
+            }
         case .disambiguate(let ids):
+            disarm()
             _ = consume(policy.commandSpan ?? unconsumed, of: unconsumed)
             let els = ids.compactMap { id in observation.elements.first { $0.id == id } }
             choices = (els, observation)
             onEvent(.disambiguation(els))
+        }
+    }
+
+    /// After a wait: arm the decision when committing is all it waits for; keep an earlier preview
+    /// while the words are still coming, so the ghost chip does not blink between revisions; drop
+    /// it once the clause waits on the user instead ("search for what?").
+    private func updateArmed(policy: PolicyResult, input: PolicyInput, utteranceId: String, revision: Int, unconsumed: String, isFinal: Bool,
+                             observation: Observation, spans: SpanSet, resp: JevResponse) {
+        guard let candidate = Policy.preview(input) else {
+            if Feedback.statusLine(for: policy.outcome, reasons: policy.reasons) != nil { disarm() }
+            return
+        }
+        let direct: Bool
+        switch candidate.action {
+        case .clickElement, .menuItem: direct = false
+        default: direct = candidate.targetElementId == nil
+        }
+        let sameWords = armed.map { $0.utteranceId == utteranceId && $0.revision == revision && $0.consumedGen == consumedGen } ?? false
+        let changed = armed.map { $0.candidate.action != candidate.action || $0.candidate.repeats != candidate.repeats } ?? true
+        let window = Policy.commitWindowMs(intent: policy.intent, input: input)
+        armed = Armed(candidate: candidate, utteranceId: utteranceId, revision: revision, consumedGen: consumedGen, windowMs: window, direct: direct,
+                      fired: sameWords && (armed?.fired ?? false), unconsumed: unconsumed, isFinal: isFinal, observation: observation, spans: spans,
+                      context: input.context, response: resp)
+        if changed {
+            log.log("armed", ["action": log.text(candidate.action.summary), "window_ms": .number(Double(window)), "direct": .bool(direct)])
+            onEvent(.armed(candidate))
+        }
+    }
+
+    /// The armed decision's commit window passed with the words unchanged: run the policy again on
+    /// its answers, now silent, and act. No model call; logged with trigger "armed". Once per
+    /// revision: if it still waits, the ordinary silence and retry path takes over.
+    private func fire(_ a: Armed, silent: Double, stable: Double) async {
+        armed?.fired = true
+        retryAt = nil
+        var resp = a.response
+        resp.latencyMs = 0; resp.usage = Usage(inputTokens: 0, outputTokens: 0)   // no call was made
+        await conclude(utteranceId: a.utteranceId, revision: a.revision, unconsumed: a.unconsumed, isFinal: a.isFinal, silent: silent, stable: stable,
+                       trigger: "armed", observation: a.observation, spans: a.spans, ctx: a.context, resp: resp, superseded: false, decidedAt: clock.now())
+        if rerunRequested {
+            rerunRequested = false
+            if let now = utterance, !isConsumedEntirely(now) { scheduleDecision(force: now.isFinal) }
         }
     }
 
@@ -412,15 +591,16 @@ public actor CommandSession {
 
     // MARK: Dispatch
 
-    private func dispatch(_ candidate: Candidate, observation: Observation, utteranceId: String, revision: Int, decidedAt: TimeInterval) async {
+    /// `spoken` is false for an action from the status menu (Undo): no last word to time it from.
+    private func dispatch(_ candidate: Candidate, observation: Observation, utteranceId: String, revision: Int, decidedAt: TimeInterval, spoken: Bool = true) async {
         executing = true
         defer { executing = false }
         var entry = LedgerEntry(dispatchId: Ident.make("d"), utteranceId: utteranceId, revision: revision, snapshotId: observation.snapshotId,
                                 candidateId: candidate.id, dispatchedAt: clock.now(), status: .unknown)
         ledger.append(entry)
         log.recordDispatch(entry)
-        let lastWord = utterance?.updatedAt ?? decidedAt
-        log.recordLatency(lastWordToDispatchMs: (entry.dispatchedAt - lastWord) * 1000, clauseToResponseMs: nil)
+        let lastWord = spoken ? (utterance?.updatedAt ?? decidedAt) : decidedAt
+        if spoken { log.recordLatency(lastWordToDispatchMs: (entry.dispatchedAt - lastWord) * 1000, clauseToResponseMs: nil) }
         log.log("dispatch", ["dispatch": .string(entry.dispatchId), "candidate": .string(candidate.id), "action": log.text(candidate.action.summary),
                              "last_word_to_dispatch_ms": .number((entry.dispatchedAt - lastWord) * 1000)])
         onEvent(.dispatched(entry, candidate))
@@ -431,8 +611,16 @@ public actor CommandSession {
         recentActions.append(candidate.summary)
         if recentActions.count > 3 { recentActions.removeFirst() }
         if outcome.result.status != .failed { lastAction = (candidate.action, clock.now()) }
+        // Only the newest action can be undone, and only one with a safe inverse: Edit › Undo
+        // after a click or a key could reverse something that was not ours.
+        if outcome.result.status == .acknowledged, outcome.verification.outcome != .failed,
+           Undo.inverse(of: candidate.action, detail: outcome.result.detail) != nil {
+            undoable = (candidate.action, outcome.result.detail, observation.app.bundleId, observation.app.name)
+        } else {
+            undoable = nil
+        }
         log.recordVerification(outcome.verification)
-        log.recordLatency(lastWordToDispatchMs: nil, clauseToResponseMs: outcome.verification.outcome == .verified ? (clock.now() - lastWord) * 1000 : nil)
+        if spoken { log.recordLatency(lastWordToDispatchMs: nil, clauseToResponseMs: outcome.verification.outcome == .verified ? (clock.now() - lastWord) * 1000 : nil) }
         log.log("executed", ["dispatch": .string(entry.dispatchId), "status": .string(outcome.result.status.rawValue), "detail": .string(outcome.result.detail),
                              "took_ms": .number(outcome.result.tookMs), "verification": .string(outcome.verification.outcome.rawValue),
                              "evidence": .string(outcome.verification.evidence.rawValue), "observed": log.text(outcome.verification.observed)])

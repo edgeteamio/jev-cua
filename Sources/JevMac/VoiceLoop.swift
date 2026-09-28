@@ -15,6 +15,8 @@ public final class VoiceLoop: @unchecked Sendable {
         public var micLoud = false
         /// Smoothed microphone RMS (0...~0.5), for level meters.
         public var level: Float = 0
+        /// Hold-to-talk is on: `listening` is true only while the key is held.
+        public var holdToTalk = false
     }
 
     private let provider: any SpeechProvider
@@ -28,6 +30,14 @@ public final class VoiceLoop: @unchecked Sendable {
         var status = Status()
         var assembler: UtteranceAssembler
         var paused = false
+        var holdToTalk = false
+        /// The hold key came up: new words are ignored, and the utterance closes once the session
+        /// has finished deciding and acting on it.
+        var released = false
+        /// Words the recognizer had not finalized when a hold was released. Its segment can span
+        /// the release, so it may send them again (alone, or ahead of the next hold's words); they
+        /// were already acted on, so only what follows them counts.
+        var carryOver: String?
         var tasks: [Task<Void, Never>] = []
         var lastLevelPublish: TimeInterval = 0
         /// Room noise floor: follows the level down quickly and up slowly, so "loud" means louder
@@ -46,6 +56,7 @@ public final class VoiceLoop: @unchecked Sendable {
 
     public var status: Status { state.withLockUnchecked { $0.status } }
     public var isPaused: Bool { state.withLockUnchecked { $0.paused } }
+    public var isHoldToTalk: Bool { state.withLockUnchecked { $0.holdToTalk } }
 
     public func start() async throws {
         try await provider.start()
@@ -87,13 +98,63 @@ public final class VoiceLoop: @unchecked Sendable {
         await boundary(reason: paused ? "paused" : "resumed")
     }
 
+    // MARK: Hold-to-talk (review 2026-09-28, item 3c)
+
+    /// Switches between always listening and hold-to-talk. Hold-to-talk starts closed: nothing is
+    /// heard, decided, or sent to Jev until the key is held (for meetings, demos, narration).
+    public func setHoldToTalk(_ on: Bool) async {
+        let changed = state.withLockUnchecked { s -> Bool in
+            guard s.holdToTalk != on else { return false }
+            s.holdToTalk = on; s.status.holdToTalk = on; s.released = false; s.carryOver = nil
+            return true
+        }
+        guard changed else { return }
+        await setPaused(on)
+        publish()
+    }
+
+    /// The hold key went down: listen, starting a fresh utterance.
+    public func holdBegan() async {
+        let opened = state.withLockUnchecked { s -> Bool in
+            guard s.holdToTalk, s.paused else { return false }
+            s.paused = false; s.released = false; s.status.listening = true
+            return true
+        }
+        guard opened else { return }
+        await boundary(reason: "hold")
+    }
+
+    /// The hold key came up: what was said is complete, so release is the end-of-speech signal
+    /// and no silence window applies. The recognizer's last words trail the voice by a few
+    /// hundred ms, so they get `drainMs` to arrive; then the utterance goes to the session as
+    /// final and the gate closes without cancelling anything the session is doing.
+    public func holdEnded(drainMs: Int = 350) async {
+        guard state.withLockUnchecked({ $0.holdToTalk && !$0.paused }) else { return }
+        await provider.commitSegment()
+        try? await Task.sleep(for: .milliseconds(drainMs))
+        let final: TranscriptRevision? = state.withLockUnchecked { s in
+            guard s.holdToTalk, !s.paused else { return nil }
+            s.paused = true; s.released = true; s.status.listening = false
+            s.carryOver = s.assembler.volatile.isEmpty ? nil : s.assembler.volatile
+            return s.assembler.releaseFinal(at: Mono.now())
+        }
+        publish()
+        if let final { await session.handleTranscript(final) }
+    }
+
     // MARK: Events
 
     private func handle(_ ev: SpeechEvent) async {
         guard case .transcript(let t) = ev else { return }
         let rev: TranscriptRevision? = state.withLockUnchecked { s in
             guard !s.paused else { return nil }
-            let r = s.assembler.apply(segmentText: t.segmentText, isFinal: t.isFinal, at: t.at)
+            var text = t.segmentText
+            if let prev = s.carryOver {
+                if let tail = Transcript.stripConsumed(raw: text, consumedPrefix: prev) { text = tail } else { s.carryOver = nil }
+                if t.isFinal { s.carryOver = nil }   // that segment is done; the next one is new speech
+                if text.isEmpty { return nil }
+            }
+            let r = s.assembler.apply(segmentText: text, isFinal: t.isFinal, at: t.at)
             s.status.text = s.assembler.text; s.status.isFinal = false; s.status.utteranceId = s.assembler.utteranceId
             return r
         }
@@ -120,6 +181,15 @@ public final class VoiceLoop: @unchecked Sendable {
 
     private func tick() async {
         let now = Mono.now()
+        // A released hold: let the session finish, then close the utterance.
+        if state.withLockUnchecked({ $0.released }) {
+            await session.tick()
+            if await session.isIdle {
+                state.withLockUnchecked { $0.released = false }
+                await boundary(reason: "released")
+            }
+            return
+        }
         // A finalized, briefly quiet utterance becomes a final revision (see UtteranceAssembler).
         let final: TranscriptRevision? = state.withLockUnchecked { s in
             guard !s.paused, let f = s.assembler.pendingFinal(now: now) else { return nil }

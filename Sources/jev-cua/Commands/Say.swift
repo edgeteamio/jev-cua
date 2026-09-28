@@ -90,6 +90,10 @@ final class EventPrinter: @unchecked Sendable {
             if let els { Swift.print("which one? " + els.enumerated().map { "\($0.offset + 1): \($0.element.role) '\($0.element.text)'" }.joined(separator: "  ")) }
         case .cancelled(let r): Swift.print("cancelled: \(r)")
         case .error(let m): Swift.print("error: \(m)")
+        case .armed(let c): if let c { Swift.print("armed: \(c.summary) (runs when the words stop)") }
+        case .offline(let why): Swift.print(why.map { "offline: can't reach Jev (\($0))" } ?? "online: Jev answers again")
+        case .help(let phrases): Swift.print("try: " + phrases.map { "\"\($0)\"" }.joined(separator: "  "))
+        case .notice(let m): Swift.print("notice: \(m)")
         }
     }
 }

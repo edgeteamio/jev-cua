@@ -143,14 +143,16 @@ final class FakeJev: JevDeciding, @unchecked Sendable {
 }
 
 final class FakePerception: Perceiving, @unchecked Sendable {
-    let state = OSAllocatedUnfairLock(initialState: (snapshot: 1, field: FocusedField?.none, app: AppIdentity(name: "Finder", bundleId: "com.apple.finder", pid: 1), observed: 0, elements: [Element]()))
-    init(field: FocusedField? = nil, app: AppIdentity? = nil, elements: [Element] = []) {
-        state.withLock { if let app { $0.app = app }; $0.field = field; $0.elements = elements }
+    let state = OSAllocatedUnfairLock(initialState: (snapshot: 1, field: FocusedField?.none, app: AppIdentity(name: "Finder", bundleId: "com.apple.finder", pid: 1), observed: 0,
+                                                     elements: [Element](), pageHost: String?.none))
+    init(field: FocusedField? = nil, app: AppIdentity? = nil, elements: [Element] = [], pageHost: String? = nil) {
+        state.withLock { if let app { $0.app = app }; $0.field = field; $0.elements = elements; $0.pageHost = pageHost }
     }
     func observe() async -> Observation {
         state.withLock {
             $0.observed += 1
-            return Observation(snapshotId: "s\($0.snapshot)", takenAt: 0, app: $0.app, focusedField: $0.field, elements: $0.elements, truncated: false, tookMs: 0)
+            return Observation(snapshotId: "s\($0.snapshot)", takenAt: 0, app: $0.app, focusedField: $0.field, elements: $0.elements, pageHost: $0.pageHost,
+                               truncated: false, tookMs: 0)
         }
     }
     func invalidate() async { state.withLock { $0.snapshot += 1 } }
@@ -165,6 +167,8 @@ final class FakeExecutor: Executing, @unchecked Sendable {
     var executeDelayMs = 0
     /// Force every verification to this outcome (tests for unknown / failed handling).
     var verificationOverride: VerificationOutcome?
+    /// The executor's account of how an action ran ("navigated in the current tab"); "ok" by default.
+    var detailFor: (@Sendable (Action) -> String)?
     init(perception: FakePerception) { self.perception = perception }
 
     func execute(_ candidate: Candidate, observation: Observation) async -> ExecutionOutcome {
@@ -175,7 +179,7 @@ final class FakeExecutor: Executing, @unchecked Sendable {
         if case .openApp(_, let name) = candidate.action { perception.setApp(AppIdentity(name: name, bundleId: "fake.\(name)", pid: 2)) }
         let status: DispatchStatus = stale ? .failed : .acknowledged
         let outcome: VerificationOutcome = verificationOverride ?? (stale ? .failed : .verified)
-        return ExecutionOutcome(result: ActionResult(dispatchId: "", status: status, detail: stale ? "stale snapshot" : "ok", tookMs: 1),
+        return ExecutionOutcome(result: ActionResult(dispatchId: "", status: status, detail: stale ? "stale snapshot" : (detailFor?(candidate.action) ?? "ok"), tookMs: 1),
                                 verification: Verification(dispatchId: "", expected: candidate.expectedPostcondition, observed: stale ? "stale" : "ok",
                                                            outcome: outcome, evidence: .none, nextStep: ""))
     }

@@ -29,12 +29,33 @@ public struct FixtureCommand: Codable, Sendable {
     public var frontmostBundleId: String?
     public var focusedField: FocusedField?
     public var pending: String?
+    /// The action that just ran, for a follow-up phrase (#18): the `followup` head is asked.
+    public var lastAction: Action?
     public var note: String?
+
+    var scene: LabScene { LabScene(frontmostApp: frontmostApp, frontmostBundleId: frontmostBundleId, focusedField: focusedField, pending: pending, lastAction: lastAction) }
 }
 
 public struct FixtureNonCommand: Codable, Sendable {
     public var text: String
+    /// Optional scene, so chatter can be tested where it is riskiest: right after an action,
+    /// with a field focused (#18).
+    public var frontmostApp: String?
+    public var frontmostBundleId: String?
+    public var focusedField: FocusedField?
+    public var lastAction: Action?
     public var note: String?
+
+    var scene: LabScene { LabScene(frontmostApp: frontmostApp, frontmostBundleId: frontmostBundleId, focusedField: focusedField, pending: nil, lastAction: lastAction) }
+}
+
+/// What was in front and what just ran when a fixture was spoken.
+struct LabScene: Sendable {
+    var frontmostApp: String?
+    var frontmostBundleId: String?
+    var focusedField: FocusedField?
+    var pending: String?
+    var lastAction: Action?
 }
 
 public struct Fixtures: Codable, Sendable {
@@ -61,6 +82,9 @@ public struct PrefixRow: Codable, Sendable {
     public var span: String?
     public var spanConfidence: Double?
     public var url: String?
+    /// The `followup` head, when a last action made it be asked.
+    public var followup: String?
+    public var followupConfidence: Double?
     public var decision: String
     public var summary: String
     public var lastGate: String
@@ -138,19 +162,23 @@ public struct LabRunner: Sendable {
     }
 
     /// One prefix, exactly as the session would evaluate it.
-    func evaluate(prefixTokens: [String], isFinal: Bool, cmd: FixtureCommand?, previousIntent: String?, consumedPrefix: String = "") async throws -> (PrefixRow, PolicyResult)? {
+    func evaluate(prefixTokens: [String], isFinal: Bool, scene: LabScene, previousIntent: String?, consumedPrefix: String = "") async throws -> (PrefixRow, PolicyResult)? {
         let full = prefixTokens.joined(separator: " ")
         // Simulate the session's consumed-prefix rule: after an act, later words in the same
         // breath are a new command only once at least two new words exist.
         guard let raw = Transcript.stripConsumed(raw: full, consumedPrefix: consumedPrefix) else { return nil }
         if !consumedPrefix.isEmpty, Transcript.wordCount(raw) < 2 { return nil }
         let spans = Spans.extract(from: raw)
-        let pending = cmd?.pending.map { Candidate(id: "pending", snapshotId: "lab", action: .pressEnter, expectedPostcondition: $0) }
-        var ctx = DecisionContext(rawTranscript: raw, isFinal: isFinal, frontmostApp: cmd?.frontmostApp ?? "Finder",
-                                  frontmostBundleId: cmd?.frontmostBundleId, focusedField: cmd?.focusedField,
-                                  pendingConfirmation: cmd?.pending, installedApps: installedApps)
+        let pending = scene.pending.map { Candidate(id: "pending", snapshotId: "lab", action: .pressEnter, expectedPostcondition: $0) }
+        var ctx = DecisionContext(rawTranscript: raw, isFinal: isFinal, frontmostApp: scene.frontmostApp ?? "Finder",
+                                  frontmostBundleId: scene.frontmostBundleId, focusedField: scene.focusedField,
+                                  pendingConfirmation: scene.pending, installedApps: installedApps)
         ctx.afterConsumed = !consumedPrefix.isEmpty
-        let questions = Questions.build(spans: spans, installedApps: Questions.relevantInstalledApps(installedApps, transcript: raw), rawTranscript: raw)
+        // A follow-up, as the session sends it: the sessions suite's phrases arrive about 0.6 s
+        // after the action before them.
+        if let last = scene.lastAction { ctx.lastAction = last; ctx.lastActionAgeS = 0.6 }
+        let questions = Questions.build(spans: spans, installedApps: Questions.relevantInstalledApps(installedApps, transcript: raw), rawTranscript: raw,
+                                        followup: ctx.lastAction != nil)
         let state = StateBuilder.state(for: ctx)
         let resp: JevResponse
         do {
@@ -172,6 +200,7 @@ public struct LabRunner: Sendable {
             app: resp.answers["app"]?.choice?.choice, site: resp.answers["site"]?.choice?.choice,
             span: resp.answers["text_span"]?.choice?.choice, spanConfidence: resp.answers["text_span"]?.choice?.confidence,
             url: resp.answers["url_span"]?.choice?.choice,
+            followup: resp.answers["followup"]?.choice?.choice, followupConfidence: resp.answers["followup"]?.choice?.confidence,
             decision: policy.outcome.name, summary: policy.summary, lastGate: policy.reasons.last?.name ?? "-",
             latencyMs: resp.latencyMs, inputTokens: resp.usage.inputTokens, cached: resp.latencyMs == 0)
         return (row, policy)
@@ -197,13 +226,15 @@ public struct LabRunner: Sendable {
                 let isFinal = n == tokens.count
                 let full = tokens[0..<n].joined(separator: " ")
                 let raw = Transcript.stripConsumed(raw: full, consumedPrefix: consumed) ?? ""
-                guard let (row, policy) = try await evaluate(prefixTokens: Array(tokens[0..<n]), isFinal: isFinal, cmd: cmdState,
+                guard let (row, policy) = try await evaluate(prefixTokens: Array(tokens[0..<n]), isFinal: isFinal, scene: cmdState.scene,
                                                               previousIntent: previous, consumedPrefix: consumed) else { continue }
                 rows.append(row)
                 if row.decision == "act" || row.decision == "confirm" {
                     if firstAct == nil { firstAct = n; firstClauseFinal = row; firstActPayload = policy.candidate?.payload }
                     if n < minWords, acts.isEmpty { premature.append(n) }
-                    acts.append(policy.intent)
+                    // A follow-up acts through its relation, not the intent head: record what it ran.
+                    let viaFollowup = policy.reasons.contains { $0.name == "followup" && $0.pass }
+                    acts.append(viaFollowup ? (policy.candidate?.action.kind ?? policy.intent) : policy.intent)
                     consumed = (consumed + " " + (policy.commandSpan ?? raw)).trimmingCharacters(in: .whitespaces)
                     previous = nil
                     cmdState.pending = nil   // a confirmed or cancelled action is no longer pending
@@ -243,7 +274,7 @@ public struct LabRunner: Sendable {
             var previous: String? = nil
             var fires: [Int] = []
             for n in 1...tokens.count {
-                guard let (row, _) = try await evaluate(prefixTokens: Array(tokens[0..<n]), isFinal: n == tokens.count, cmd: nil, previousIntent: previous) else { continue }
+                guard let (row, _) = try await evaluate(prefixTokens: Array(tokens[0..<n]), isFinal: n == tokens.count, scene: nc.scene, previousIntent: previous) else { continue }
                 rows.append(row)
                 if row.decision == "act" || row.decision == "confirm" { fires.append(n) }
                 previous = row.intent
@@ -303,17 +334,21 @@ public enum LabRender {
                          c.finalAppCorrect == false ? "app wrong" : "", c.finalSiteCorrect == false ? "site wrong" : "",
                          c.finalSpanCorrect == false ? "span wrong" : ""].filter { !$0.isEmpty }.joined(separator: ", ")
             md += "### \(c.fixture.text)\nacts \(c.acts) \(c.actsCorrect ? "" : "**SEQUENCE WRONG** ")expected \(c.fixture.intent)\(c.fixture.app.map { " app=\($0)" } ?? "")\(c.fixture.site.map { " site=\($0)" } ?? "")\(c.fixture.span.map { " span='\($0)'" } ?? "")\(c.fixture.url.map { " url='\($0)'" } ?? ""); first act at word \(c.firstActAt.map(String.init) ?? "-") of \(c.rows.count)\(flags.isEmpty ? "" : "  **\(flags)**")\n\n"
-            md += "| words | prefix | intent | conf | complete | is_cmd | app | site | span | decision | gate |\n|---|---|---|---|---|---|---|---|---|---|---|\n"
+            md += "| words | prefix | intent | conf | complete | is_cmd | app | site | span | followup | decision | gate |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n"
             for row in c.rows {
-                md += "| \(row.words)\(row.isFinal ? "F" : "") | \(row.prefix) | \(row.intent) | \(String(format: "%.2f", row.intentConfidence)) | \(String(format: "%.2f", row.complete)) | \(String(format: "%.2f", row.isCommand)) | \(row.app ?? "-") | \(row.site ?? "-") | \(row.span.map { "\($0) (\(String(format: "%.2f", row.spanConfidence ?? 0)))" } ?? row.url ?? "-") | **\(row.decision)** | \(row.lastGate) |\n"
+                md += "| \(row.words)\(row.isFinal ? "F" : "") | \(row.prefix) | \(row.intent) | \(String(format: "%.2f", row.intentConfidence)) | \(String(format: "%.2f", row.complete)) | \(String(format: "%.2f", row.isCommand)) | \(row.app ?? "-") | \(row.site ?? "-") | \(row.span.map { "\($0) (\(String(format: "%.2f", row.spanConfidence ?? 0)))" } ?? row.url ?? "-") | \(followup(row)) | **\(row.decision)** | \(row.lastGate) |\n"
             }
             md += "\n"
         }
-        md += "## non-commands\n\n| text | final intent | is_cmd | false fires |\n|---|---|---|---|\n"
+        md += "## non-commands\n\n| text | final intent | is_cmd | followup | false fires |\n|---|---|---|---|---|\n"
         for n in r.nonCommands {
-            md += "| \(n.fixture.text) | \(n.finalIntent) | \(String(format: "%.2f", n.finalIsCommand)) | \(n.falseFires.isEmpty ? "none" : "**\(n.falseFires)**") |\n"
+            md += "| \(n.fixture.text) | \(n.finalIntent) | \(String(format: "%.2f", n.finalIsCommand)) | \(n.rows.last.map(followup) ?? "-") | \(n.falseFires.isEmpty ? "none" : "**\(n.falseFires)**") |\n"
         }
         return md
+    }
+
+    static func followup(_ row: PrefixRow) -> String {
+        row.followup.map { "\($0) (\(String(format: "%.2f", row.followupConfidence ?? 0)))" } ?? "-"
     }
 }
 

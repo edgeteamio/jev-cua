@@ -76,6 +76,14 @@ public enum MenuBar {
             for m in menus {
                 if let hit = AX.children(m).first(where: { norm(AX.string($0, kAXTitleAttribute) ?? "") == norm(name) }) { found = hit; break }
             }
+            // Undo and Redo rename themselves with the last edit ("Undo" ↔ "Undo Typing"), so a
+            // path read earlier may not match; they are unique in their menu, so match the verb.
+            let verb = norm(name).split(separator: " ").first.map(String.init) ?? ""
+            if found == nil, i == path.count - 2, verb == "undo" || verb == "redo" {
+                for m in menus {
+                    if let hit = AX.children(m).first(where: { norm(AX.string($0, kAXTitleAttribute) ?? "").split(separator: " ").first.map(String.init) == verb }) { found = hit; break }
+                }
+            }
             guard let found else { return nil }
             if i == path.count - 2 { return found }
             menus = AX.children(found)

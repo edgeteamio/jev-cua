@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import Foundation
 import JevCore
@@ -59,6 +60,60 @@ public final class Speaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Se
         synth.stopSpeaking(at: .immediate)
     }
 
+    // MARK: Chimes (review 2026-09-28, item 3a)
+
+    /// Short system sounds for state changes. Speech mutes the mic for the whole phrase plus the
+    /// tail (about a second for "Listening"), so the first words after resuming were lost; a
+    /// chime mutes it only for its own length.
+    public enum Chime: Sendable {
+        case listening   // listening again: resumed, or a hold began
+        case paused      // paused, or a hold released
+        case stopped     // "stop" cancelled what was running
+        var soundName: String {
+            switch self {
+            case .listening: "Tink"
+            case .paused: "Pop"
+            case .stopped: "Bottle"
+            }
+        }
+    }
+
+    public static let soundsKey = "feedbackSounds"
+    public static var soundsByDefault: Bool {
+        UserDefaults.standard.object(forKey: soundsKey) == nil ? true : UserDefaults.standard.bool(forKey: soundsKey)
+    }
+    private let soundsFlag = OSAllocatedUnfairLock(initialState: Speaker.soundsByDefault)
+    public var soundsEnabled: Bool {
+        get { soundsFlag.withLock { $0 } }
+        set { soundsFlag.withLock { $0 = newValue }; UserDefaults.standard.set(newValue, forKey: Self.soundsKey) }
+    }
+
+    public func chime(_ c: Chime) {
+        guard soundsEnabled else { return }
+        let name = NSSound.Name(c.soundName)
+        // The mic hears the chime too, so this process still never reaches the recognizer: drop
+        // the audio for the chime's own length (a system sound is 0.1 to 0.5 s), plus a hair.
+        let muteMs = Int(min(NSSound(named: name)?.duration ?? 0.2, 0.6) * 1000) + 60
+        audio?.muted = true
+        let gen = state.withLock { s -> Int in s.generation += 1; return s.generation }
+        DispatchQueue.main.async {
+            guard let sound = NSSound(named: name)?.copy() as? NSSound else { return }
+            sound.volume = 0.35
+            sound.play()
+        }
+        Task { [state, audio] in
+            try? await Task.sleep(for: .milliseconds(muteMs))
+            let idle = state.withLock { $0.speaking == 0 && $0.generation == gen }
+            if idle { audio?.muted = false }
+        }
+    }
+
+    /// The chime for a session event, if any.
+    public static func chime(for event: SessionEvent) -> Chime? {
+        if case .cancelled(let reason) = event, reason == "kill phrase" { return .stopped }
+        return nil
+    }
+
     private func finished() {
         let gen = state.withLock { s -> Int in
             s.speaking = max(0, s.speaking - 1); s.generation += 1; return s.generation
@@ -89,8 +144,10 @@ public final class Speaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Se
         case .pendingConfirmation(let c):
             guard let c else { return nil }
             return "Say confirm to \(c.action.summary.lowercased())"
-        case .cancelled(let reason):
-            return reason == "kill phrase" ? "Stopped" : nil
+        case .cancelled:
+            return nil   // "stop" gets a chime: speech would mute the mic for the next command
+        case .offline(let why):
+            return why == nil ? nil : "I can't reach Jev"   // once per outage: the session reports changes only
         case .decided(let d, let summary, _):
             // Waits that need the user: no field focused, deny list.
             switch d.outcome {
@@ -101,7 +158,7 @@ public final class Speaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Se
         case .disambiguation(let els):
             guard let els, !els.isEmpty else { return nil }
             return "Which one? Say a number, one to \(els.count)"
-        case .transcript, .deciding, .error: return nil
+        case .transcript, .deciding, .error, .armed, .help, .notice: return nil
         }
     }
 }

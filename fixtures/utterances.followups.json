@@ -1,0 +1,95 @@
+{
+  "note": "Follow-ups (#18): a bare phrase right after an action, judged by the followup head. Group A is body text after Return in a note, the relation that missed live (\"milk and eggs\" scored 0.54-0.77 against 0.60); group B holds the follow-ups that already worked, so a wording change cannot break them; the non-commands are chatter in the same scenes, which must never be typed or searched. No phrase here is one of the followup question's own examples.",
+  "commands": [
+    {
+      "text": "milk and eggs",
+      "intent": "type_text", "altIntents": ["none"], "expectedActs": ["type_text"], "span": "milk and eggs",
+      "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {"role": "textarea", "valuePreview": "groceries\n", "secure": false},
+      "lastAction": {"pressEnter": {}},
+      "note": "the sessions case that missed on 2026-09-28 (runs/2026-09-28T12-10-14Z)"
+    },
+    {
+      "text": "call the plumber about the sink",
+      "intent": "type_text", "altIntents": ["none"], "expectedActs": ["type_text"], "span": "call the plumber about the sink",
+      "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {"role": "textarea", "valuePreview": "to do\n", "secure": false},
+      "lastAction": {"pressEnter": {}},
+      "note": "a list item with a verb of its own that is not a computer command"
+    },
+    {
+      "text": "buy a birthday card for mom",
+      "intent": "type_text", "altIntents": ["none"], "expectedActs": ["type_text"], "span": "buy a birthday card for mom",
+      "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {"role": "textarea", "valuePreview": "to do\n", "secure": false},
+      "lastAction": {"pressEnter": {}}
+    },
+    {
+      "text": "bread butter and jam",
+      "intent": "type_text", "altIntents": ["none"], "expectedActs": ["type_text"], "span": "bread butter and jam",
+      "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {"role": "textarea", "valuePreview": "groceries\nmilk and eggs\n", "secure": false},
+      "lastAction": {"pressEnter": {}}
+    },
+    {
+      "text": "renew the car registration",
+      "intent": "type_text", "altIntents": ["none"], "expectedActs": ["type_text"], "span": "renew the car registration",
+      "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {"role": "textarea", "valuePreview": "errands\n", "secure": false},
+      "lastAction": {"pressEnter": {}}
+    },
+    {
+      "text": "two cans of tomatoes",
+      "intent": "type_text", "altIntents": ["none"], "expectedActs": ["type_text"], "span": "two cans of tomatoes",
+      "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {"role": "textarea", "valuePreview": "groceries\n", "secure": false},
+      "lastAction": {"pressEnter": {}}
+    },
+    {
+      "text": "ada lovelace",
+      "intent": "web_search", "altIntents": ["none"], "expectedActs": ["web_search"], "span": "ada lovelace",
+      "frontmostApp": "Google Chrome", "frontmostBundleId": "com.google.Chrome",
+      "lastAction": {"openSite": {"url": "https://en.wikipedia.org/wiki/Main_Page", "label": "wikipedia"}},
+      "note": "group B: a searchable site just opened"
+    },
+    {
+      "text": "maine coon kittens",
+      "intent": "web_search", "altIntents": ["none"], "expectedActs": ["web_search"], "span": "maine coon kittens",
+      "frontmostApp": "Google Chrome", "frontmostBundleId": "com.google.Chrome",
+      "lastAction": {"webSearch": {"url": "https://www.google.com/search?q=cats", "query": "cats", "site": "google"}},
+      "note": "group B: a search refined"
+    },
+    {
+      "text": "weekend plans",
+      "intent": "type_text", "altIntents": ["none"], "expectedActs": ["type_text"], "span": "weekend plans",
+      "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {"role": "textarea", "secure": false},
+      "lastAction": {"newNote": {}},
+      "note": "group B: a new note just made"
+    },
+    {
+      "text": "ideas for the trip",
+      "intent": "type_text", "altIntents": ["none"], "expectedActs": ["type_text"], "span": "ideas for the trip",
+      "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+      "focusedField": {"role": "textarea", "secure": false},
+      "lastAction": {"openApp": {"bundleId": "com.apple.Notes", "name": "Notes"}},
+      "note": "group B: an app just opened with its field focused"
+    }
+  ],
+  "nonCommands": [
+    {"text": "okay that looks good", "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+     "focusedField": {"role": "textarea", "valuePreview": "groceries\n", "secure": false}, "lastAction": {"pressEnter": {}}},
+    {"text": "hmm what else do we need", "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+     "focusedField": {"role": "textarea", "valuePreview": "groceries\n", "secure": false}, "lastAction": {"pressEnter": {}}},
+    {"text": "let me think about the rest", "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+     "focusedField": {"role": "textarea", "valuePreview": "groceries\n", "secure": false}, "lastAction": {"pressEnter": {}}},
+    {"text": "I think that's everything for now", "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+     "focusedField": {"role": "textarea", "valuePreview": "groceries\n", "secure": false}, "lastAction": {"pressEnter": {}}},
+    {"text": "wait where did I put my keys", "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+     "focusedField": {"role": "textarea", "valuePreview": "groceries\n", "secure": false}, "lastAction": {"pressEnter": {}}},
+    {"text": "that page loads really slowly", "frontmostApp": "Google Chrome", "frontmostBundleId": "com.google.Chrome",
+     "lastAction": {"openSite": {"url": "https://en.wikipedia.org/wiki/Main_Page", "label": "wikipedia"}}},
+    {"text": "she mentioned it at dinner yesterday", "frontmostApp": "Notes", "frontmostBundleId": "com.apple.Notes",
+     "focusedField": {"role": "textarea", "secure": false}, "lastAction": {"newNote": {}}}
+  ]
+}

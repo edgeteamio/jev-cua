@@ -86,6 +86,10 @@ import Testing
         #expect(Spans.isKillPhrase("Stop."))
         #expect(Spans.isKillPhrase("never mind"))
         #expect(!Spans.isKillPhrase("stop the music"))
+        #expect(Spans.isHelpPhrase("What can I say?"))
+        #expect(Spans.isHelpPhrase("help"))
+        #expect(!Spans.isHelpPhrase("I don't know what can I say to him"), "whole utterance only")
+        #expect(!Spans.isHelpPhrase("help me open chrome"))
     }
 
     @Test func stripConsumedDropsContinuationFillers() {

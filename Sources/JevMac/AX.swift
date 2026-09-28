@@ -295,7 +295,7 @@ public enum Apps {
 
 /// Browser helpers: the front tab's URL through the address bar or the web area's AXURL.
 public enum Browser {
-    static let bundleIds: Set<String> = ["com.google.Chrome", "com.apple.Safari", "company.thebrowser.Browser", "com.brave.Browser", "org.mozilla.firefox", "com.microsoft.edgemac"]
+    static let bundleIds = Config.browserBundleIds
     static func isBrowser(_ bundleId: String) -> Bool { bundleIds.contains(bundleId) }
 
     /// Waits for the front tab's page to settle after a navigation: the web area reports

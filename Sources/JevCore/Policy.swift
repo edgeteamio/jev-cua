@@ -82,7 +82,8 @@ public enum Policy {
         }
         func fmt(_ v: Double) -> String { String(format: "%.2f", v) }
 
-        let committed = ctx.isFinal || input.silentMs >= Double(Config.silenceCompleteMs)
+        let window = commitWindowMs(intent: intent, input: input)
+        let committed = ctx.isFinal || input.silentMs >= Double(window)
 
         // 1. Pending confirmation.
         if let pending = input.pending {
@@ -144,7 +145,7 @@ public enum Policy {
             let allowed = Config.earlyExecutionKinds.contains(intent)
             _ = check("early_allowlist", intent, "allowlisted", allowed, allowed ? "may fire on a partial" : "waits for a committed clause")
             if !allowed {
-                return result(.wait(reason: "waiting for the end of the command", retryInMs: Config.silenceCompleteMs), "waiting for a committed clause")
+                return result(.wait(reason: "waiting for the end of the command", retryInMs: max(50, window - Int(input.silentMs))), "waiting for a committed clause")
             }
             let stableEnough = input.intentStable || conf >= Config.T.earlyHighConfidence
             _ = check("intent_stable", input.intentStable ? "stable" : "changed (\(fmt(conf)))",
@@ -193,7 +194,7 @@ public enum Policy {
                 }
             }
         } else {
-            _ = check("committed", ctx.isFinal ? "final" : "silent \(Int(input.silentMs)) ms", "final or \(Config.silenceCompleteMs) ms", true, "clause committed")
+            _ = check("committed", ctx.isFinal ? "final" : "silent \(Int(input.silentMs)) ms", "final or \(window) ms", true, "clause committed")
         }
 
         // 5b. Free-text payloads wait for a committed clause (or payload silence).
@@ -239,6 +240,40 @@ public enum Policy {
         }
 
         return result(.act(candidateId: candidate.id), candidate.summary, candidate: candidate)
+    }
+
+    /// How long the words must have stopped before a clause counts as committed (plan 9.5), per
+    /// intent. Gate 4 holds every intent outside the early allowlist until then; gate 5b keeps a
+    /// `payloadSilenceMs` (600) floor for free text on top, so returning less than that has no
+    /// effect on `web_search` / `type_text`.
+    ///
+    /// The trade-off (review 2026-09-28, 17 live sessions): free-text commands dispatched 956 ms
+    /// (`type_text`) and 1139 ms (`web_search`) after the last word at p50, against the plan's
+    /// 600 ms, because they waited for `silenceCompleteMs` (900). But 6 of 118 in-phrase word gaps
+    /// fell between 600 and 900 ms, so a shorter window can commit a query mid-phrase ("google
+    /// search norbert | wiener"). The armed chip (Session) shows the action during the wait, and
+    /// "stop" still cancels it before it fires.
+    ///
+    /// Signals at hand: `intent`; `Config.payloadIntents`; Jev's confidence in the payload,
+    /// `input.answers["text_span"]?.choice?.confidence`, and in the intent,
+    /// `input.answers["intent"]?.choice?.confidence`; whether the picked span runs to the end of
+    /// what was said, `input.context.rawTranscript`. Return milliseconds.
+    public static func commitWindowMs(intent: String, input: PolicyInput) -> Int {
+        // TODO(dan): the commit rule for free-text payloads (5-10 lines). This placeholder keeps
+        // today's behavior: 900 ms for every intent.
+        return Config.silenceCompleteMs
+    }
+
+    /// What this decision would do once its clause commits, when committing is all it waits for:
+    /// the same answers evaluated with the words already stopped. Nil when that would not act (a
+    /// missing argument, a confirmation, badges, chatter). The session shows it as an armed chip.
+    public static func preview(_ input: PolicyInput) -> Candidate? {
+        var committed = input
+        committed.silentMs = max(input.silentMs, 1e9)
+        committed.transcriptStableMs = max(input.transcriptStableMs, 1e9)
+        let r = evaluate(committed)
+        guard case .act = r.outcome else { return nil }
+        return r.candidate
     }
 }
 
@@ -337,7 +372,12 @@ public enum CandidateBuilder {
             }
             reasons.append(GateReason(name: "text_span", value: pick.text, threshold: fmt(Config.T.spanConfidence), pass: true, note: pick.note))
             let siteOpt = a["site"]?.choice?.choice ?? Questions.siteNotStated
-            let site = Config.site(option: siteOpt).flatMap { $0.search != nil ? $0 : nil } ?? Config.site(option: Config.defaultSearchSite)!
+            // An unnamed site searches the catalog site already open in the browser ("or Sweden"
+            // on a Wikipedia page went to Google live on 2026-09-24), else Google.
+            let stated = Config.site(option: siteOpt).flatMap { $0.search != nil ? $0 : nil }
+            let open = stated == nil ? Config.site(forHost: ctx.pageHost).flatMap { $0.search != nil ? $0 : nil } : nil
+            if let open { reasons.append(GateReason(name: "site", value: "\(open.option) (open page)", threshold: "-", pass: true, note: "no site named; the page in front")) }
+            let site = stated ?? open ?? Config.site(option: Config.defaultSearchSite)!
             let cleaned = cleanQuery(pick.text, site: site)
             if cleaned.text != pick.text { reasons.append(GateReason(name: "query", value: cleaned.text, threshold: "-", pass: true, note: cleaned.note)) }
             let query = cleaned.text.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? cleaned.text
@@ -534,8 +574,10 @@ public enum CandidateBuilder {
         while let last = words.last, siteWords.contains(last.lowercased()) { words.removeLast(); notes.append("dropped '\(last)'") }
         // Leading site words: "youtube alex hormozi" -> "alex hormozi".
         while let first = words.first, siteWords.contains(first.lowercased()), first.lowercased() != "on" { words.removeFirst(); notes.append("dropped '\(first)'") }
-        // Leading articles and "me": "a good pasta recipe" -> "good pasta recipe"; "me some lofi" -> "lofi".
-        while let first = words.first, ["a", "an", "the", "some", "me"].contains(first.lowercased()), words.count > 1 { words.removeFirst() }
+        // Leading articles, "me", and the word that joins a site to its query: "a good pasta
+        // recipe" -> "good pasta recipe"; "me some lofi" -> "lofi"; "for Sweden" (from "Wikipedia
+        // for Sweden", which searched `for Sweden` live on 2026-09-24) -> "Sweden".
+        while let first = words.first, ["a", "an", "the", "some", "me", "for", "about"].contains(first.lowercased()), words.count > 1 { words.removeFirst() }
         var newest = false
         if let i = words.firstIndex(where: { ["latest", "newest", "recent", "new"].contains($0.lowercased()) }), words.count > 1 {
             newest = site.newestSearch != nil

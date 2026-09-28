@@ -955,3 +955,38 @@ TypeSafe docs to keep open: `docs.typesafe.ai/concepts/how-to-build-with-system-
   public; our contract differs and our own numbers (targets 69/69, labs 100%, goals 12/14)
   stand. Worth taking: chance-corrected accuracy and ECE in the targets lab report; the
   RLOO-on-live-suites recipe and the 4B-adapter base as Phase 7 candidates (#12).
+- 2026-09-28, voice-loop UX pass (owner asked for a review, then items 1a-1c, 2a-2c, 3a-3d).
+  Measured from the 17 live `run` sessions in `runs/`: last word → dispatch p50 941 ms over 54
+  dispatches against section 3's 600 ms; the early-fire intents met it and every intent that
+  waits for a committed clause missed it by 1.6-2x. Cause: gate 4 held free text for
+  `silenceCompleteMs`, so gate 5b's `payloadSilenceMs` never bound, and each commit asked Jev
+  again for unchanged words. Adopted: one `commitWindowMs` per intent (the rule is the owner's; it
+  keeps 900 until then); armed decisions, previewed as a ghost chip and fired on the tick that
+  crosses the window from the answers in hand (once per revision; element targets are decided
+  again); a status line limited to what needs the user (`Feedback`), with chatter no longer
+  opening the notch; `page_host` in session state, so an unnamed search stays on the catalog
+  site in front; "for"/"about" dropped from the front of a query; confirmations lapsing after
+  `candidateTtlMs`, which nothing read before; chimes instead of speech for pause, resume, and
+  "stop"; an outage state and a 2 s live timeout; hold-to-talk; "what can I say?", recent
+  actions, and an undo limited to safe inverses. Found while verifying: a sessions run on a
+  locked Mac sent a Return to `loginwindow`; nothing is decided or run while the lock screen is
+  in front. Not adopted: a flat 600 ms window (6 of 118 in-phrase word gaps fell in 600-900 ms),
+  a filter on follow-ups that match on-screen text (the one suspected read-aloud search matched no
+  label). Policy version p2. Sessions suite 6/7 on an unlocked screen: the Chrome menu case
+  passes with the profile picker closed (#13); "title then body" missed on a follow-up
+  confidence of 0.54 against 0.60, a state Jev scored 0.63-0.77 on 2026-09-22.
+- 2026-09-28, #18 (follow-ups after Return). The followup question never described text for a
+  new line, and defined supplies_text as having no verb of its own, which list lines have. q26
+  covers Return, keeps everyday verbs in list items as text, and names remarks about what someone
+  did as narration. Measured on a new follow-up lab set (fixtures can now carry a focused field and
+  a last action): 8/10 fired before, 10/10 after, in three fresh live runs each, with chatter
+  unrelated and 0 false fires throughout. Answer validation accepts a pick within 0.02 of the
+  argmax, the sum's tolerance; near-ties had dropped whole responses. Not adopted: a lower
+  `followupConfidence` (where chatter was judged unrelated, supplies_text reached at most 0.47,
+  0.46 on q25; a lower bar would spend that margin for every action) and a code rule for Return
+  (the question was the cause, and fixing it moved every Return line above 0.87).
+- 2026-09-28, focus guards. A sessions run with another window taking focus mid-case sent a
+  Return decided for Notes to that window, then replaced the text of its field on a phrase decided
+  with it in front. Keys and scrolls now recheck the front app before sending (section 11's
+  precondition recheck, which typing and menu commands already had); the sessions suite stops a
+  case whose focus moved between phrases and reports it as interrupted.
