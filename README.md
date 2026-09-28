@@ -480,6 +480,34 @@ taken for chatter. Jev scored the same state 0.63 to 0.77 on 2026-09-22; the sta
 in the note list on screen (32 elements, not 34), so this is a margin that was always thin, not
 a change in what Jev sees.
 
+**Follow-ups after Return (2026-09-28, #18).** The followup question (q10) called a phrase
+`supplies_text` when it had "no command verb of its own" and came "right after the computer
+opened a site, a search, an app, or a note": nothing covered Return, and the lines of a list have
+verbs. Lab fixtures can now carry a scene (focused field, last action), which asks the followup
+head, and `fixtures/utterances.followups.json` holds ten follow-ups (six lines after Return in a
+note, four of the kinds that already worked) and seven chatter lines in the same scenes, none of
+them the question's own examples. Three fresh live runs each way:
+
+| | before (q25) | after (q26) |
+|---|---|---|
+| follow-ups fired | 8/10, 8/10, 8/10 | 10/10, 10/10, 10/10 |
+| "call the plumber about the sink" after Return | supplies_text 0.37 to 0.46 | 0.95 to 0.96 |
+| "renew the car registration" after Return | 0.34, or malformed twice | 0.88 to 0.89 |
+| the other Return lines | 0.67 to 0.96 | 0.94 to 0.98 |
+| chatter (7 lines) | unrelated, 0 fired | unrelated, 0 fired |
+
+q26 says supplies_text also follows "pressed Return to start a new line", that a list item keeps
+its everyday verbs and is still text, and that a remark about what someone said or did is
+narration (without that last clause the narration line after a new note fell to unrelated 0.48;
+with it 0.75 to 0.82, above q25's 0.72 to 0.75). The two malformed answers were an `intent` pick
+of 'none' at 0.43 beside 'type_text' at 0.44: validation now accepts a pick within 0.02 of the
+argmax (the sum's own tolerance), since rejecting it threw away every other head's answer. The
+followup head is only asked when there is a last action, so the other labs did not move (0 live
+calls; calibration 52/52, held-out 21/21, realistic 31/31). The sessions case passed 5/5 on the
+new build, and the full suite 6/7: the Chrome case failed with Chrome's profile picker open
+again, its known limit. `jev-cua lab --cache` now takes an absolute path (it was nested under the
+repo).
+
 ## Phase 4 status (2026-09-20): complete
 
 `AXWalker` walks the focused window with one `AXUIElementCopyMultipleAttributeValues` per node,

@@ -6,9 +6,11 @@ enum Lab {
     static func run(_ args: Args) async throws {
         if args.string("dictation") != nil { try await DictationLab.run(args); return }
         let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let fixturesPath = cwd.appending(path: args.string("fixtures") ?? "fixtures/utterances.calibration.json")
-        let heldoutPath = args.string("heldout").map { cwd.appending(path: $0) }
-        let cachePath = cwd.appending(path: args.string("cache") ?? "fixtures/jev_cache.json")
+        // An absolute path stays absolute (appending one to the cwd nested it inside the repo).
+        func path(_ p: String) -> URL { p.hasPrefix("/") ? URL(fileURLWithPath: p) : cwd.appending(path: p) }
+        let fixturesPath = path(args.string("fixtures") ?? "fixtures/utterances.calibration.json")
+        let heldoutPath = args.string("heldout").map(path)
+        let cachePath = path(args.string("cache") ?? "fixtures/jev_cache.json")
         let live: (any JevDeciding)? = args.flag("no-live") ? nil : try JevClient()
         let cache = JevCache(path: cachePath, live: live)
         let installed = args.flag("installed-apps") ? InstalledApps.names() : []

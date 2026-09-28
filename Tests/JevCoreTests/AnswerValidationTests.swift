@@ -43,6 +43,16 @@ import Testing
     @Test func rejectsChoiceThatIsNotTheArgmax() {
         let bad = ChoiceAnswer(choice: "none", probabilities: ["open_app": 0.8, "web_search": 0.15, "none": 0.05], confidence: 0.6)
         #expect(throws: MalformedAnswer.self) { try response(intent: bad).validate(against: questions) }
+        // Just past the tolerance still fails: 0.47 against 0.50.
+        let clear = ChoiceAnswer(choice: "none", probabilities: ["open_app": 0.03, "web_search": 0.50, "none": 0.47], confidence: 0.4)
+        #expect(throws: MalformedAnswer.self) { try response(intent: clear).validate(against: questions) }
+    }
+
+    /// #18: 'none' 0.43 against 'type_text' 0.44 made the whole response unusable, and with it a
+    /// follow-up answer that was fine. A near-tie within the sum tolerance is the model's call.
+    @Test func acceptsANearTieAsTheModelsOwnChoice() throws {
+        let nearTie = ChoiceAnswer(choice: "none", probabilities: ["open_app": 0.13, "web_search": 0.44, "none": 0.43], confidence: 0.39)
+        try response(intent: nearTie).validate(against: questions)
     }
 
     @Test func rejectsOutOfRangeNoulAndScoreKeys() {

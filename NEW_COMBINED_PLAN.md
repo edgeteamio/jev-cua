@@ -975,3 +975,13 @@ TypeSafe docs to keep open: `docs.typesafe.ai/concepts/how-to-build-with-system-
   label). Policy version p2. Sessions suite 6/7 on an unlocked screen: the Chrome menu case
   passes with the profile picker closed (#13); "title then body" missed on a follow-up
   confidence of 0.54 against 0.60, a state Jev scored 0.63-0.77 on 2026-09-22.
+- 2026-09-28, #18 (follow-ups after Return). The followup question never described text for a
+  new line, and defined supplies_text as having no verb of its own, which list lines have. q26
+  covers Return, keeps everyday verbs in list items as text, and names remarks about what someone
+  did as narration. Measured on a new follow-up lab set (fixtures can now carry a focused field and
+  a last action): 8/10 fired before, 10/10 after, in three fresh live runs each, with chatter
+  unrelated and 0 false fires throughout. Answer validation accepts a pick within 0.02 of the
+  argmax, the sum's tolerance; near-ties had dropped whole responses. Not adopted: a lower
+  `followupConfidence` (where chatter was judged unrelated, supplies_text reached at most 0.47,
+  0.46 on q25; a lower bar would spend that margin for every action) and a code rule for Return (the question was the
+  cause, and fixing it moved every Return line above 0.87).

@@ -246,8 +246,11 @@ public struct MalformedAnswer: Error, CustomStringConvertible, Sendable, Equatab
 extension JevResponse {
     /// Checks every answer against the question that produced it. A Choice must name a known
     /// option, carry a probability for every option and nothing else, sum to 1 within 0.02, and
-    /// report the argmax as its choice; a Noul must be finite in 0...1; a Score's probability
-    /// keys must be level indices. Any failure makes the whole response unusable.
+    /// report the argmax as its choice, within the same 0.02 (a near-tie such as 'none' 0.43
+    /// against 'type_text' 0.44 is the model's own call, and its low confidence already keeps it
+    /// from acting; rejecting it threw away every other head's answer, #18); a Noul must be
+    /// finite in 0...1; a Score's probability keys must be level indices. Any failure makes the
+    /// whole response unusable.
     public func validate(against questions: [String: Question]) throws {
         func unit(_ v: Double) -> Bool { v.isFinite && v >= 0 && v <= 1 }
         for (id, question) in questions {
@@ -263,7 +266,7 @@ extension JevResponse {
                 let sum = a.probabilities.values.reduce(0, +)
                 guard abs(sum - 1) <= 0.02 else { throw MalformedAnswer(question: id, reason: "probabilities sum to \(sum)") }
                 let top = a.probabilities.values.max() ?? 0
-                guard (a.probabilities[a.choice] ?? -1) >= top - 1e-6 else {
+                guard (a.probabilities[a.choice] ?? -1) >= top - 0.02 else {
                     let best = a.probabilities.max { $0.value < $1.value }
                     throw MalformedAnswer(question: id, reason: "choice '\(a.choice)' p=\(a.probabilities[a.choice] ?? -1) is not the argmax ('\(best?.key ?? "?")' p=\(best?.value ?? -1), confidence \(a.confidence))")
                 }
