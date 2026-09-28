@@ -67,6 +67,7 @@ import Testing
         #expect(r.outcome.name == "act")
         #expect(r.candidate?.action == .clickElement(elementId: "e01"))
         #expect(r.candidate?.targetElementId == "e01")
+        #expect(r.candidate?.humanLabel == "Click “Take Photo”", "the chip names the element, not its id")
     }
 
     @Test func ambiguousClickTargetDisambiguates() {
@@ -498,6 +499,44 @@ import Testing
         #expect(Suggestions.phrases(bundleId: "com.google.Chrome", pageHost: "www.google.com").first == "google norbert wiener")
         #expect(Suggestions.phrases(bundleId: "com.example.other", pageHost: nil).contains("open chrome"))
         #expect(Suggestions.phrases(bundleId: nil, pageHost: nil).count <= 4)
+    }
+
+    /// The commit rule: free text commits at 600 ms of silence, everything else at 900.
+    @Test func freeTextCommitsSoonerThanOtherCommands() {
+        let search = input("google the minnesota vikings", isFinal: false, intent: "web_search", site: "google", span: "the minnesota vikings")
+        #expect(Policy.commitWindowMs(intent: "web_search", input: search) == Config.payloadSilenceMs)
+        #expect(Policy.commitWindowMs(intent: "type_text", input: search) == Config.payloadSilenceMs)
+        #expect(Policy.commitWindowMs(intent: "click_element", input: search) == Config.silenceCompleteMs)
+        #expect(Policy.commitWindowMs(intent: "new_note", input: search) == Config.silenceCompleteMs)
+        let at650 = input("google the minnesota vikings", isFinal: false, intent: "web_search", silentMs: 650, site: "google", span: "the minnesota vikings")
+        #expect(Policy.evaluate(at650).outcome.name == "act")
+    }
+
+    /// The pause in "let's search Wikipedia for | Michael Jordan" (live, 2026-09-22): the span was
+    /// the site's own name, which at a 600 ms window would have searched Wikipedia for "Wikipedia".
+    @Test func onlyTheSitesNameIsNoQuery() {
+        let paused = input("let's search Wikipedia for", isFinal: false, intent: "web_search", silentMs: 700, site: "wikipedia", span: "Wikipedia")
+        #expect(paused.spans.payload(text: "Wikipedia") != nil, "the span Jev picked live is one the code offers")
+        #expect(Policy.evaluate(paused).outcome == .wait(reason: "search for what?", retryInMs: nil))
+        #expect(CandidateBuilder.cleanQuery("Wikipedia", site: Config.site(option: "wikipedia")!).text == "")
+    }
+
+    /// A site taken from the page, not named: its words stay in the query.
+    @Test func aPageSiteKeepsItsOwnWordsInTheQuery() {
+        var i = input("who founded wikipedia", isFinal: true, intent: "web_search", span: "who founded wikipedia")
+        i.context.pageHost = "en.wikipedia.org"
+        #expect(Policy.evaluate(i).candidate?.action.summary == "web_search wikipedia 'who founded wikipedia'")
+    }
+
+    /// Clicks read by their label in the overlay and in a spoken confirmation; logs keep the id.
+    @Test func clicksAreNamedByTheirLabel() {
+        let archive = Candidate(id: "c", snapshotId: "s", action: .clickElement(elementId: "e07"), targetElementId: "e07", expectedPostcondition: "", label: "Archive")
+        #expect(archive.humanLabel == "Click “Archive”")
+        #expect(archive.spokenLabel == "click Archive")
+        #expect(archive.summary == "click_element e07", "logs, replay, and the state sent to Jev keep the machine form")
+        #expect(Candidate(id: "c", snapshotId: "s", action: .pressEnter, expectedPostcondition: "").spokenLabel == "press Return")
+        #expect(Candidate(id: "c", snapshotId: "s", action: .clickElement(elementId: "e07"), expectedPostcondition: "").humanLabel == "Click e07",
+                "no label known: the id is all there is")
     }
 
     /// Item 3d: only actions with a safe inverse can be undone.

@@ -135,6 +135,11 @@ public actor MacExecutor: Executing {
         } else if !pressed {
             return outcome(c, t0, .failed, "press refused and no shortcut", .failed, .snapshotDiff, "", "re-observe")
         }
+        // Nothing changed: in Chrome, first rule out the profile picker, which takes every new-tab
+        // and close-tab while it is open, and say so instead of "no observable change".
+        if Browser.isBrowser(app.bundleId), Browser.profilePickerOpen(pid: app.pid) {
+            return outcome(c, t0, .failed, Browser.profilePickerDetail, .failed, .snapshotDiff, "profile picker window open", "close Chrome's profile picker")
+        }
         return outcome(c, t0, .acknowledged, how, .unknown, .snapshotDiff, "no observable change", "observe again")
     }
 

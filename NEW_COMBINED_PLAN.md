@@ -990,3 +990,13 @@ TypeSafe docs to keep open: `docs.typesafe.ai/concepts/how-to-build-with-system-
   with it in front. Keys and scrolls now recheck the front app before sending (section 11's
   precondition recheck, which typing and menu commands already had); the sessions suite stops a
   case whose focus moved between phrases and reports it as interrupted.
+- 2026-09-28, the commit rule and two polish items. `commitWindowMs`: free text commits after
+  `payloadSilenceMs` (600), everything else after `silenceCompleteMs` (900). Measured on the 35
+  live search and typing commands: no pause inside a started query fell in 600-900 ms; the two in
+  that band preceded the query, one with the site's own name as the span, so a query that is only
+  the site's name is now refused. A site taken from the open page keeps its words in the query.
+  Not adopted: a rule on span confidence, which does not separate a finished query from a growing
+  one (0.85 median when fired, 0.78 while waiting). Click candidates carry a display-only label
+  (chips, spoken confirmations); Chrome's profile picker is named when it swallows a menu command.
+  Live after a Jev outage passed: sessions 6/6 (the Chrome case interrupted by the picker), goals
+  11/12 over the six workflows without the camera, 0 false completions.

@@ -182,7 +182,7 @@ public actor CommandSession {
             choices = nil; onEvent(.disambiguation(nil))
             consumedPrefix = u.rawText; consumedGen += 1
             let candidate = Candidate(id: Ident.make("c"), snapshotId: c.observation.snapshotId, action: .clickElement(elementId: e.id),
-                                      targetElementId: e.id, expectedPostcondition: "'\(e.text)' pressed")
+                                      targetElementId: e.id, expectedPostcondition: "'\(e.text)' pressed", label: e.text)
             log.log("choice", ["number": .number(Double(n)), "element": .string(e.id)])
             await dispatch(candidate, observation: c.observation, utteranceId: u.id, revision: u.revision, decidedAt: now)
             return

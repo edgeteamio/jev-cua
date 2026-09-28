@@ -68,7 +68,13 @@ enum SessionsSuite {
                 // Return and a replace-all reached another app's text box. Stop the case instead.
                 var expected = c.setup?.open_app ?? Apps.frontmost().name
                 var interrupted: String? = nil
-                for (i, text) in c.phrases.enumerated() {
+                // The Chrome case's known limit is the environment, not a result: the profile picker
+                // swallows new-tab and close-tab while it is open.
+                let setupFront = Apps.frontmost()
+                if Config.browserBundleIds.contains(setupFront.bundleId), Browser.profilePickerOpen(pid: setupFront.pid) {
+                    interrupted = "Chrome's profile picker is open; close it and re-run"
+                }
+                for (i, text) in c.phrases.enumerated() where interrupted == nil {
                     let front = Apps.frontmost()
                     if front.name != expected { interrupted = "focus moved to \(front.name) before phrase \(i + 1)"; break }
                     let before = trace.actions.count
