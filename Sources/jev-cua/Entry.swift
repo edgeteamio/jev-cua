@@ -30,6 +30,9 @@ enum Entry {
         // `open JevCUA.app --args ... --cwd <dir>`: LaunchServices starts the app at `/`, so the
         // project directory (dotenv, fixtures, runs) is passed explicitly (scripts/app-run.sh).
         if let cwd = args.string("cwd") { FileManager.default.changeCurrentDirectoryPath(cwd) }
+        // `--jev-endpoint gateway|typesafe`: this run only, over JEV_ENDPOINT in .env (dotenv never
+        // overrides a variable already set).
+        if let endpoint = args.string("jev-endpoint") { setenv("JEV_ENDPOINT", endpoint, 1) }
         switch args.command ?? "doctor" {
         case "run": runUI { try await Run.setup(args) }
         case "ui-preview": runUI { try await UIPreview.run(args) }

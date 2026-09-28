@@ -7,7 +7,8 @@ public protocol JevDeciding: Sendable {
 }
 
 public enum JevError: Error, CustomStringConvertible, Sendable {
-    case missingAPIKey
+    /// The endpoint's credential (named) is not set.
+    case missingAPIKey(String)
     case http(status: Int, body: String)
     case rateLimited(retryAfterMs: Int?)
     case overloaded(retryAfterMs: Int?)
@@ -18,7 +19,7 @@ public enum JevError: Error, CustomStringConvertible, Sendable {
 
     public var description: String {
         switch self {
-        case .missingAPIKey: "TYPESAFE_API_KEY is not set (put it in .env or the environment)"
+        case .missingAPIKey(let name): "\(name) is not set (put it in .env or the environment)"
         case .http(let s, let b): "HTTP \(s): \(b.prefix(300))"
         case .rateLimited(let r): "rate limited (429), retry-after \(r.map { "\($0) ms" } ?? "unspecified")"
         case .overloaded(let r): "overloaded (529), retry-after \(r.map { "\($0) ms" } ?? "unspecified")"
@@ -30,24 +31,32 @@ public enum JevError: Error, CustomStringConvertible, Sendable {
     }
 
     /// True when Jev could not be reached or could not answer: the network, a timeout, a 5xx, an
-    /// overload, rate limiting, a missing key. False for a bad answer or a cancelled request. The
-    /// voice app shows an outage until the next answer arrives.
+    /// overload, rate limiting, a missing or rejected key, or (through AI Gateway) no credits or an
+    /// exhausted budget. False for a bad answer or a cancelled request. The voice app shows an
+    /// outage until the next answer arrives.
     public var isOutage: Bool {
         switch self {
         case .transport, .overloaded, .rateLimited, .missingAPIKey: true
-        case .http(let status, _): status >= 500 || status == 401 || status == 403
+        case .http(let status, _): status >= 500 || status == 401 || status == 402 || status == 403
         case .decoding, .malformed, .cancelled: false
         }
     }
 
     /// A few words for the overlay while offline; the full description stays in the run log.
+    /// AI Gateway's spend errors carry a code in the body (its setup guide's error table).
     public var outageSummary: String {
         switch self {
         case .transport(let m): m.contains("timed out") || m.contains("-1001") ? "timed out" : "no connection"
-        case .http(let s, _): s == 401 || s == 403 ? "API key rejected (HTTP \(s))" : "server error (HTTP \(s))"
+        case .http(let s, let body):
+            if body.contains("insufficient_funds") { "AI Gateway credits used up (HTTP 402)" }
+            else if body.contains("quota_for_entity_exceeded") { "AI Gateway budget exhausted (HTTP 402)" }
+            else if body.contains("customer_verification_required") { "AI Gateway needs a payment method (HTTP 403)" }
+            else if s == 401 || s == 403 { "API key rejected (HTTP \(s))" }
+            else if s == 402 { "payment required (HTTP 402)" }
+            else { "server error (HTTP \(s))" }
         case .overloaded: "Jev is overloaded"
         case .rateLimited: "rate limited"
-        case .missingAPIKey: "no API key"
+        case .missingAPIKey(let name): "\(name) missing"
         default: description
         }
     }
@@ -57,18 +66,20 @@ public enum JevError: Error, CustomStringConvertible, Sendable {
 /// one retry on 429/529 honouring Retry-After, and no retry once the calling task is cancelled
 /// (a superseded utterance must never spend a second request).
 public final class JevClient: JevDeciding, Sendable {
-    public let baseURL: URL
-    public let model: String
+    public let endpoint: JevEndpoint
+    public var baseURL: URL { endpoint.baseURL }
+    public var model: String { endpoint.model }
     private let apiKey: String
     private let session: URLSession
     private let maxRetryDelayMs: Int
 
-    public init(apiKey: String? = nil, baseURL: URL = Config.baseURL, model: String = Config.model,
-                timeout: TimeInterval = 5, maxRetryDelayMs: Int = 2000) throws {
-        guard let key = apiKey ?? Env.apiKey, !key.isEmpty else { throw JevError.missingAPIKey }
+    /// `endpoint` defaults to the configured one (`JEV_ENDPOINT`, see `JevEndpoint`); `apiKey`
+    /// defaults to that endpoint's credential from the environment or `.env`.
+    public init(endpoint: JevEndpoint? = nil, apiKey: String? = nil, timeout: TimeInterval = 5, maxRetryDelayMs: Int = 2000) throws {
+        let endpoint = try endpoint ?? JevEndpoint.current()
+        guard let key = apiKey ?? Env.secret(endpoint.keyName), !key.isEmpty else { throw JevError.missingAPIKey(endpoint.keyName) }
+        self.endpoint = endpoint
         self.apiKey = key
-        self.baseURL = baseURL
-        self.model = model
         self.maxRetryDelayMs = maxRetryDelayMs
         let cfg = URLSessionConfiguration.ephemeral
         cfg.timeoutIntervalForRequest = timeout
@@ -90,7 +101,9 @@ public final class JevClient: JevDeciding, Sendable {
             let t0 = Mono.now()
             let (data, http) = try await post("/v1/systemone", body: body)
             let latency = (Mono.now() - t0) * 1000
-            let requestId = http.value(forHTTPHeaderField: "x-typesafe-request-id")
+            // TypeSafe names the request in a header; AI Gateway names it in the body, which is the
+            // ID its Logs are searched by.
+            let requestId = http.value(forHTTPHeaderField: "x-typesafe-request-id") ?? Self.gatewayGenerationId(data)
 
             switch http.statusCode {
             case 200..<300:
@@ -130,8 +143,26 @@ public final class JevClient: JevDeciding, Sendable {
         guard (200..<300).contains(http.statusCode) else {
             throw JevError.http(status: http.statusCode, body: String(data: data, encoding: .utf8) ?? "")
         }
-        struct Wrapper: Decodable { let models: [ModelCard] }
-        return try JSONDecoder().decode(Wrapper.self, from: data).models
+        return try Self.decodeModels(data)
+    }
+
+    /// TypeSafe lists `{"models": [{name, description, release_date}]}`; a list in the common
+    /// `{"data": [{id, description}]}` shape is read too, so either endpoint's catalog prints.
+    static func decodeModels(_ data: Data) throws -> [ModelCard] {
+        struct TypeSafeList: Decodable { let models: [ModelCard] }
+        if let list = try? JSONDecoder().decode(TypeSafeList.self, from: data) { return list.models }
+        struct Entry: Decodable { let id: String; let description: String?; let name: String? }
+        struct DataList: Decodable { let data: [Entry] }
+        let list = try JSONDecoder().decode(DataList.self, from: data)
+        return list.data.map { ModelCard(name: $0.id, description: $0.description ?? $0.name ?? "", releaseDate: nil) }
+    }
+
+    /// `provider_metadata.gateway.generationId` from an AI Gateway response body, if present.
+    static func gatewayGenerationId(_ data: Data) -> String? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let meta = (root["provider_metadata"] ?? root["providerMetadata"]) as? [String: Any],
+              let gateway = meta["gateway"] as? [String: Any] else { return nil }
+        return gateway["generationId"] as? String
     }
 
     private func post(_ path: String, body: Data) async throws -> (Data, HTTPURLResponse) {

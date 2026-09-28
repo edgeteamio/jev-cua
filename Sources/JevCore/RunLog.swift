@@ -30,6 +30,8 @@ public final class RunLog: @unchecked Sendable {
         public var failed: Int = 0
         public var unknown: Int = 0
         public var duplicateDispatches: Int = 0
+        /// "typesafe" or "gateway" (absent in runs before 2026-09-28, which were all TypeSafe).
+        public var endpoint: String? = nil
         public var jevLatencyMs: [Double] = []
         public var lastWordToDispatchMs: [Double] = []
         public var clauseToResponseMs: [Double] = []
@@ -55,9 +57,11 @@ public final class RunLog: @unchecked Sendable {
         FileManager.default.createFile(atPath: events.path, contents: nil)
         handle = try FileHandle(forWritingTo: events)
         self.redact = redact
+        let endpoint = (try? JevEndpoint.current()) ?? .typesafe
         state.withLockUnchecked {
-            $0.summary = Summary(startedAt: ts, model: Config.model, questionsVersion: Questions.version,
+            $0.summary = Summary(startedAt: ts, model: endpoint.model, questionsVersion: Questions.version,
                                  policyVersion: Self.policyVersion, appVersion: appVersion, redacted: redact)
+            $0.summary?.endpoint = endpoint.kind.rawValue
         }
     }
 

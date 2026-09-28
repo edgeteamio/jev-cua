@@ -65,6 +65,41 @@ Screen Recording is not requested; v1 takes no screenshots.
 (debug, release, or the bundle) reaches `api.typesafe.ai`, LuLu shows an alert and blocks until
 it is answered. Choose Allow for the process; until then every Jev request times out after 5 s.
 
+### Jev through Vercel AI Gateway (optional)
+
+Vercel AI Gateway serves Jev (`typesafe-ai/jev`, the only `evaluation` model in its catalog)
+through a TypeSafe-compatible API: the same `POST /v1/systemone` request and the same answers at
+`https://ai-gateway.vercel.sh/typesafe`, billed through Vercel with the team's budgets, spend
+alerts, and Logs. Only the base URL, the credential, and the model name change, so answer
+validation, the caches, and replay work as before. To use it, create a key (the CLI prints it
+once; put it in `.env`, not in chat or shell history):
+
+```bash
+vercel ai-gateway api-keys create --name jev-cua --budget 5 --refresh-period monthly
+```
+
+then set `JEV_ENDPOINT=gateway` and `AI_GATEWAY_API_KEY=…` in `.env` (a Vercel OIDC token in
+`VERCEL_OIDC_TOKEN` works too), or pass `--jev-endpoint gateway` for one run.
+`scripts/jev-cua doctor --live` then reports `live via gateway`, and every run's `summary.json`
+records `endpoint` and `model`.
+
+- **Version.** `typesafe-ai/jev` is not a version: like TypeSafe's `jev-latest` it moves when a
+  release ships, and the gateway echoes the ID you sent rather than the version that answered.
+  Today it means `jev-1.13.0`, the version every threshold here was tuned on (TypeSafe's models
+  page lists no other). `doctor` and `models` mark it "not pinned"; `JEV_GATEWAY_MODEL` sends
+  another ID. When TypeSafe ships a new version, run the labs through the gateway before relying
+  on it.
+- **Caches.** The model is part of every request, so answers cached through one endpoint are
+  never served for the other.
+- **Errors.** A rejected key (401), no credits (402 `insufficient_funds`), an exhausted budget
+  (402 `quota_for_entity_exceeded`), or a missing payment method (403) show as the offline state
+  with that reason.
+
+Verified without a key: the route answers `401 Authentication failed` in TypeSafe's error shape
+(a wrong path gives 404), and the unit tests cover the endpoint choice, URLs, the gateway's
+documented response, both model-list shapes, and its spend errors. An end-to-end request and the
+labs through the gateway wait for a key.
+
 ### Toolchain
 
 Two things are wrong with the shims on this machine, so the scripts bypass them:

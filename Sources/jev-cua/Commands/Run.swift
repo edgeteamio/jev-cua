@@ -96,7 +96,7 @@ enum Run {
         let hold = args.flag("hold-to-talk") || (!args.flag("always-on") && UserDefaults.standard.bool(forKey: RunUI.holdToTalkKey))
         if hold { await loop.setHoldToTalk(true) }
         let keys = hold ? "hold \(stopper.hotKey.display) to talk" : "\(stopper.hotKey.display) pauses"
-        print("listening (\(provider.name)); \(keys), mouse to the top-left corner stops, say \"stop\" to cancel, \"what can I say?\" for examples; log \(log.directory.lastPathComponent)")
+        print("listening (\(provider.name)); \(keys), mouse to the top-left corner stops, say \"stop\" to cancel, \"what can I say?\" for examples; Jev via \(live.endpoint.summary); log \(log.directory.lastPathComponent)")
         ui.show()
 
         Run.live = Live(log: log, decider: decider, perception: perception, executor: executor, audio: audio, speaker: speaker,

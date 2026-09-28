@@ -20,8 +20,8 @@ enum Doctor {
         ]
         let resp = try await client.systemOne(state: state, questions: questions, model: nil)
         let p = resp.answers["is_command"]?.noul ?? -1
-        print(String(format: "live: model=%@ is_command=%.3f latency=%.0f ms tokens=%d cost=$%.6f request=%@",
-                     resp.model, p, resp.latencyMs, resp.usage.inputTokens, resp.usage.costUSD, resp.requestId ?? "-"))
+        print(String(format: "live via %@: model=%@ is_command=%.3f latency=%.0f ms tokens=%d cost=$%.6f request=%@",
+                     client.endpoint.kind.rawValue, resp.model, p, resp.latencyMs, resp.usage.inputTokens, resp.usage.costUSD, resp.requestId ?? "-"))
     }
 }
 
@@ -36,8 +36,20 @@ struct DoctorReport {
         var r = DoctorReport()
         let dotenv = Env.dotenvPath
         r.rows.append(("dotenv", dotenv.map { $0.path } ?? "not found (walked up from cwd)"))
+        do {
+            let endpoint = try JevEndpoint.current()
+            r.rows.append(("jev endpoint", endpoint.summary))
+            if endpoint.kind == .gateway {
+                r.rows.append((endpoint.keyName, Env.secret(endpoint.keyName) != nil ? "present" : "MISSING"))
+                if !endpoint.pinned {
+                    r.rows.append(("model pin", "\(endpoint.model) follows TypeSafe's latest release; thresholds were tuned on \(Config.model)"))
+                }
+            }
+        } catch {
+            r.rows.append(("jev endpoint", "INVALID: \(error)"))
+        }
         r.rows.append(("TYPESAFE_API_KEY", Env.apiKeyPresent ? "present" : "MISSING"))
-        r.rows.append(("model pin", Config.model))
+        r.rows.append(("model pin", Config.model + " (direct endpoint)"))
         r.rows.append(("bundle", Bundle.main.bundleIdentifier ?? "none (unbundled binary; permissions attach to the launching terminal)"))
         r.rows.append(("executable", Bundle.main.executableURL?.path ?? "?"))
 

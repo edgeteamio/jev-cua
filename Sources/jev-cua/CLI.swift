@@ -74,5 +74,10 @@ enum Usage {
       help
 
     global: --cwd <dir>             run as if started in <dir> (used by scripts/app-run.sh)
+            --jev-endpoint E        typesafe (default) or gateway, this run only, over JEV_ENDPOINT
+
+    environment (.env): TYPESAFE_API_KEY for the direct endpoint; JEV_ENDPOINT=gateway with
+      AI_GATEWAY_API_KEY (or VERCEL_OIDC_TOKEN) to serve Jev through Vercel AI Gateway, and
+      JEV_GATEWAY_MODEL to override its model (default typesafe-ai/jev)
     """
 }

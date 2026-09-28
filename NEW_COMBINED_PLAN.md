@@ -1000,3 +1000,12 @@ TypeSafe docs to keep open: `docs.typesafe.ai/concepts/how-to-build-with-system-
   (chips, spoken confirmations); Chrome's profile picker is named when it swallows a menu command.
   Live after a Jev outage passed: sessions 6/6 (the Chrome case interrupted by the picker), goals
   11/12 over the six workflows without the camera, 0 false completions.
+- 2026-09-28, Jev through Vercel AI Gateway (owner asked). The gateway lists Jev as
+  `typesafe-ai/jev`, its one `evaluation` model, priced as TypeSafe prices it, and serves it three
+  ways: its own `/v1/evaluate` (different question and answer names, no choice confidence shown),
+  AI SDK 7's `evaluate`, and a TypeSafe-compatible API at `ai-gateway.vercel.sh/typesafe` that takes
+  our request unchanged. Adopted the last as `JEV_ENDPOINT=gateway` (`JevEndpoint`): base URL,
+  credential (`AI_GATEWAY_API_KEY` or `VERCEL_OIDC_TOKEN`), and model change, nothing else; the
+  gateway's generation ID stands in for TypeSafe's request ID. Open: the gateway ID is not a
+  version (it follows `jev-latest`, today `jev-1.13.0`), so the thresholds' pin holds only until
+  TypeSafe's next release; whether the gateway accepts a versioned ID waits on a key.
