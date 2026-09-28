@@ -106,6 +106,10 @@ public actor CommandSession {
     private var pendingAt: TimeInterval = 0
     /// Non-nil while Jev is unreachable: the overlay shows it until the next answer arrives.
     private var outage: String?
+    /// Requests in a row that got no answer. One stall is not an outage (through AI Gateway the
+    /// p95 reached 2.4 s against the live app's 2 s timeout, 2026-09-28); two in a row are. A
+    /// rejected key, spend, or a missing model does not heal by itself and shows at once.
+    private var stallsInARow = 0
     /// The lock screen was in front at the last decision (logged once per change).
     private var screenLocked = false
 
@@ -430,13 +434,19 @@ public actor CommandSession {
             if case .cancelled = e { log.recordJevCancelled(); return }
             log.log("jev_error", ["error": .string(e.description)])
             // An outage shows until Jev answers again (item 3b); a bad answer is a one-off.
-            if e.isOutage { noteOutage(e.outageSummary) } else { onEvent(.error(e.description)) }
+            if e.isOutage {
+                stallsInARow += 1
+                if !e.isTransient || stallsInARow >= 2 { noteOutage(e.outageSummary) }
+            } else {
+                onEvent(.error(e.description))
+            }
             return
         } catch {
             onEvent(.error("\(error)")); log.log("jev_error", ["error": .string("\(error)")]); return
         }
         if Task.isCancelled { log.recordJevCancelled(); return }
         log.recordJev(resp)
+        stallsInARow = 0
         noteOutage(nil)
 
         // Superseded while in flight: still evaluate, but as a non-final, non-silent revision so

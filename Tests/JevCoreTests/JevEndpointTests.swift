@@ -1,4 +1,5 @@
 import Foundation
+import os
 import Testing
 @testable import JevCore
 
@@ -98,5 +99,41 @@ import Testing
         #expect(JevError.http(status: 402, body: #"{"error_type": "quota_for_entity_exceeded"}"#).outageSummary == "AI Gateway budget exhausted (HTTP 402)")
         #expect(JevError.http(status: 403, body: #"{"error_type": "customer_verification_required"}"#).outageSummary == "AI Gateway needs a payment method (HTTP 403)")
         #expect(JevError.http(status: 401, body: "").outageSummary == "API key rejected (HTTP 401)")
+    }
+
+    /// Checked live on 2026-09-28: AI Gateway serves only `typesafe-ai/jev`; a versioned ID fails
+    /// every request, so it is an outage with its reason, not a one-off error.
+    @Test func anUnknownModelIsAnOutageAndOnlyNoAnswerIsRetried() {
+        let body = #"{"error":{"message":"Model 'typesafe-ai/jev-1.13.0' not found","type":"model_not_found"}}"#
+        let notFound = JevError.http(status: 404, body: body)
+        #expect(notFound.isOutage)
+        #expect(notFound.outageSummary == "the endpoint has no such model (HTTP 404)")
+        #expect(!notFound.isTransient, "asking again will not find it")
+        #expect(JevError.transport("The request timed out.").isTransient)
+        #expect(JevError.http(status: 503, body: "").isTransient)
+        #expect(JevError.rateLimited(retryAfterMs: nil).isTransient)
+        #expect(!JevError.http(status: 402, body: "insufficient_funds").isTransient)
+        #expect(!JevError.malformed(MalformedAnswer(question: "q", reason: "r")).isTransient)
+    }
+
+    /// The lab asks again when no answer came back, and stops asking after a few tries.
+    @Test func theLabRetriesATimeoutButNotABadKey() async throws {
+        final class Flaky: JevDeciding, @unchecked Sendable {
+            let calls = OSAllocatedUnfairLock(initialState: 0)
+            let failures: Int
+            let error: JevError
+            init(failures: Int, error: JevError) { self.failures = failures; self.error = error }
+            func systemOne(state: JSONValue, questions: [String: Question], model: String?) async throws -> JevResponse {
+                let n = calls.withLock { $0 += 1; return $0 }
+                if n <= failures { throw error }
+                return JevResponse(model: "m", answers: [:], usage: Usage(inputTokens: 1, outputTokens: 0), latencyMs: 1, requestId: nil)
+            }
+        }
+        let timeouts = Flaky(failures: 2, error: .transport("The request timed out."))
+        _ = try await LabRunner.answer(timeouts, state: ["t": "x"], questions: [:])
+        #expect(timeouts.calls.withLock { $0 } == 3, "two timeouts, then an answer")
+        let badKey = Flaky(failures: 5, error: .http(status: 401, body: ""))
+        await #expect(throws: JevError.self) { try await LabRunner.answer(badKey, state: ["t": "x"], questions: [:]) }
+        #expect(badKey.calls.withLock { $0 } == 1, "a rejected key is not asked again")
     }
 }

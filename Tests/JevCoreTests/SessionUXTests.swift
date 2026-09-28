@@ -151,6 +151,34 @@ import Testing
         #expect(executor.summaries == ["open_app Google Chrome"])
     }
 
+    /// Through AI Gateway one request in a dozen stalled past the live timeout (2026-09-28): a
+    /// single stall must not flash the offline state or say "I can't reach Jev" mid-sentence.
+    @Test func oneStallIsNotAnOutageButARejectedKeyShowsAtOnce() async {
+        final class FailsFirst: JevDeciding, @unchecked Sendable {
+            let remaining: OSAllocatedUnfairLock<Int>
+            let error: JevError
+            let inner = FakeJev()
+            init(_ n: Int, _ error: JevError) { remaining = OSAllocatedUnfairLock(initialState: n); self.error = error }
+            func systemOne(state: JSONValue, questions: [String: Question], model: String?) async throws -> JevResponse {
+                if remaining.withLock({ r in r -= 1; return r >= 0 }) { throw error }
+                return try await inner.systemOne(state: state, questions: questions, model: model)
+            }
+        }
+        func outages(_ decider: FailsFirst) async -> [String?] {
+            let perception = FakePerception()
+            let events = Collector()
+            let session = CommandSession(decider: decider, perception: perception, executor: FakeExecutor(perception: perception), log: RunLog.discarding(),
+                                         clock: ManualClock(), onEvent: { events.add($0) })
+            for (i, text) in ["open chrome", "open safari"].enumerated() {
+                await session.handleTranscript(TranscriptRevision(utteranceId: "u\(i)", text: text, isFinal: true, at: Double(i)))
+                await drain(session)
+            }
+            return events.all.compactMap { if case .offline(let why) = $0 { Optional(why) } else { nil } }
+        }
+        #expect(await outages(FailsFirst(1, .transport("The request timed out."))) == [], "one stall, then an answer: nothing shown")
+        #expect(await outages(FailsFirst(1, .http(status: 401, body: ""))) == ["API key rejected (HTTP 401)", nil], "a rejected key shows at once")
+    }
+
     /// Item 3d: Undo reverses the newest action only when a safe inverse exists.
     @Test func undoGoesBackAfterAnInPlaceSearchAndUndoesTyping() async {
         let clock = ManualClock()

@@ -142,6 +142,8 @@ public struct LabSummary: Codable, Sendable {
     public var latencyP95Ms: Double?
     public var inputTokensTotal: Int
     public var costUSD: Double
+    /// Which endpoint answered (`JevEndpoint.summary`), since two routes serve Jev; set by the command.
+    public var endpoint: String? = nil
 }
 
 public struct LabReport: Codable, Sendable {
@@ -159,6 +161,22 @@ public struct LabRunner: Sendable {
 
     public init(decider: any JevDeciding, installedApps: [String] = [], progress: (@Sendable (String) -> Void)? = nil) {
         self.decider = decider; self.installedApps = installedApps; self.progress = progress
+    }
+
+    /// One request, retried when no answer came back at all (a timeout, a dropped connection, a
+    /// 5xx): a lab run is hundreds of requests with no side effects, and one stall through AI
+    /// Gateway (1 in 12 on 2026-09-28) aborted whole runs. The live session never retries; its
+    /// decision would be stale.
+    static func answer(_ decider: any JevDeciding, state: JSONValue, questions: [String: Question], attempts: Int = 3) async throws -> JevResponse {
+        var attempt = 0
+        while true {
+            attempt += 1
+            do {
+                return try await decider.systemOne(state: state, questions: questions, model: nil)
+            } catch let e as JevError where attempt < attempts && e.isTransient {
+                try await Task.sleep(for: .milliseconds(500 * attempt))
+            }
+        }
     }
 
     /// One prefix, exactly as the session would evaluate it.
@@ -182,7 +200,7 @@ public struct LabRunner: Sendable {
         let state = StateBuilder.state(for: ctx)
         let resp: JevResponse
         do {
-            resp = try await decider.systemOne(state: state, questions: questions, model: nil)
+            resp = try await Self.answer(decider, state: state, questions: questions)
         } catch let JevError.malformed(m) {
             progress?("    MALFORMED on '\(raw)': \(m.description)")
             let row = PrefixRow(words: prefixTokens.count, prefix: raw, isFinal: isFinal, intent: "malformed", intentConfidence: 0, complete: 0, isCommand: 0,
@@ -323,7 +341,7 @@ public enum LabRender {
           fired at first fireable \(s.firedAtFirstFireable)/\(s.earlyFireCandidates) allowlisted commands acted at the first prefix with verb + object
           calls                   \(s.liveCalls) live, \(s.cachedCalls) cached; latency p50 \(ms(s.latencyP50Ms)) p95 \(ms(s.latencyP95Ms))
           tokens / cost           \(s.inputTokensTotal) / $\(String(format: "%.4f", s.costUSD))
-        """
+        """ + (s.endpoint.map { "\n  endpoint                \($0)" } ?? "")
     }
 
     public static func markdown(_ r: LabReport) -> String {

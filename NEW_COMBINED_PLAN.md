@@ -1006,6 +1006,10 @@ TypeSafe docs to keep open: `docs.typesafe.ai/concepts/how-to-build-with-system-
   AI SDK 7's `evaluate`, and a TypeSafe-compatible API at `ai-gateway.vercel.sh/typesafe` that takes
   our request unchanged. Adopted the last as `JEV_ENDPOINT=gateway` (`JevEndpoint`): base URL,
   credential (`AI_GATEWAY_API_KEY` or `VERCEL_OIDC_TOKEN`), and model change, nothing else; the
-  gateway's generation ID stands in for TypeSafe's request ID. Open: the gateway ID is not a
-  version (it follows `jev-latest`, today `jev-1.13.0`), so the thresholds' pin holds only until
-  TypeSafe's next release; whether the gateway accepts a versioned ID waits on a key.
+  gateway's generation ID stands in for TypeSafe's request ID. Measured with a key: the gateway
+  rejects every versioned ID (404 `model_not_found`), so it cannot be pinned; it serves
+  `jev-1.13.0` today (four labs identical, prefix probabilities within the direct route's own
+  run-to-run spread); it is slower and stalls (median 352 against 228 ms; timeouts on 1 of 12
+  probes and 3 of 17 sessions requests, the sessions suite 4/6 with every answered decision
+  right). Adopted from that: lab retries on no answer, an offline state that waits for two stalls
+  in a row, the endpoint in lab reports. The direct endpoint stays the default for the voice loop.

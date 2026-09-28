@@ -37,8 +37,21 @@ public enum JevError: Error, CustomStringConvertible, Sendable {
     public var isOutage: Bool {
         switch self {
         case .transport, .overloaded, .rateLimited, .missingAPIKey: true
-        case .http(let status, _): status >= 500 || status == 401 || status == 402 || status == 403
+        case .http(let status, let body):
+            // A model the endpoint does not serve fails every request the same way (AI Gateway
+            // rejects versioned IDs such as typesafe-ai/jev-1.13.0 with model_not_found).
+            status >= 500 || status == 401 || status == 402 || status == 403 || (status == 404 && body.contains("model_not_found"))
         case .decoding, .malformed, .cancelled: false
+        }
+    }
+
+    /// No answer came back, and asking again may get one: a timeout or dropped connection, a 5xx,
+    /// an overload. Not a rejected key, spend, or a bad answer, which asking again will not fix.
+    public var isTransient: Bool {
+        switch self {
+        case .transport, .overloaded, .rateLimited: true
+        case .http(let status, _): status >= 500
+        default: false
         }
     }
 
@@ -51,6 +64,7 @@ public enum JevError: Error, CustomStringConvertible, Sendable {
             if body.contains("insufficient_funds") { "AI Gateway credits used up (HTTP 402)" }
             else if body.contains("quota_for_entity_exceeded") { "AI Gateway budget exhausted (HTTP 402)" }
             else if body.contains("customer_verification_required") { "AI Gateway needs a payment method (HTTP 403)" }
+            else if body.contains("model_not_found") { "the endpoint has no such model (HTTP 404)" }
             else if s == 401 || s == 403 { "API key rejected (HTTP \(s))" }
             else if s == 402 { "payment required (HTTP 402)" }
             else { "server error (HTTP \(s))" }
