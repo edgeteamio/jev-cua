@@ -4570,6 +4570,78 @@
         ],
         "noDuplicates": true
       }
+    },
+    {
+      "name": "a search that names no site stays on the site in front (2026-09-24: 'or Sweden' on Wikipedia went to Google)",
+      "pageHost": "en.wikipedia.org",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "search for sweden",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [
+          "web_search wikipedia 'sweden'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "a search fires once the words stop, from the armed decision",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "google search norbert wiener",
+            false
+          ]
+        },
+        {
+          "tick": 300
+        },
+        {
+          "tick": 300
+        },
+        {
+          "tick": 400
+        }
+      ],
+      "expect": {
+        "actions": [
+          "web_search google 'norbert wiener'"
+        ],
+        "noDuplicates": true
+      }
+    },
+    {
+      "name": "an unanswered confirmation lapses, and a later confirm runs nothing",
+      "steps": [
+        {
+          "rev": [
+            "u1",
+            "send it press enter",
+            true
+          ]
+        },
+        {
+          "tick": 8200
+        },
+        {
+          "rev": [
+            "u2",
+            "confirm",
+            true
+          ]
+        }
+      ],
+      "expect": {
+        "actions": [],
+        "pendingAfter": null
+      }
     }
   ]
 }

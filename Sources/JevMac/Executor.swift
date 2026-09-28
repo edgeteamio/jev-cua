@@ -327,7 +327,7 @@ public actor MacExecutor: Executing {
             try? await Task.sleep(for: .milliseconds(80))
             await Keys.type(url, pid: front.pid)
             Keys.press(Keys.returnKey, pid: front.pid)
-            how = "navigated in the current tab"
+            how = Undo.navigatedInPlace
         } else {
             guard await Apps.open(url: u, inAppAt: chrome) else { return outcome(c, t0, .failed, "open failed", .failed, .url, "", "") }
         }

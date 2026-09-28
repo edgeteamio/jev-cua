@@ -19,22 +19,32 @@ enum UIPreview {
 
         var m = OverlayModel()
         m.listening = true
+        m.engaged = true
         func chip(_ label: String, _ st: OverlayModel.Chip.State) -> OverlayModel.Chip { .init(label: label, state: st) }
         let states: [(String, OverlayModel)] = [
             ("01-idle", m),
-            ("02-partial", { var x = m; x.rawText = "open the"; x.level = 0.03; x.micLoud = true; x.statusLine = "nothing yet"; return x }()),
-            ("03-partial2", { var x = m; x.rawText = "open the notes app and"; x.level = 0.06; x.micLoud = true; x.statusLine = "waiting for the rest of the command"; return x }()),
-            ("04-dispatched", { var x = m; x.rawText = "open the notes app and cre"; x.consumed = "open the notes app"; x.level = 0.05; x.micLoud = true
+            // Conversation: the notch stays folded, the dot brightens while you talk (item 1c).
+            ("02-chatter", { var x = m; x.engaged = false; x.rawText = "so I was telling him about the"; x.level = 0.05; x.micLoud = true; return x }()),
+            ("03-partial", { var x = m; x.rawText = "open the"; x.level = 0.03; x.micLoud = true; return x }()),
+            // Waiting only for the words to stop: the action shows as a ghost chip (item 1b).
+            ("04-armed", { var x = m; x.rawText = "google the Minnesota Vikings"; x.level = 0.01; x.armed = "Search google for “Minnesota Vikings”"; return x }()),
+            ("05-dispatched", { var x = m; x.rawText = "open the notes app and cre"; x.consumed = "open the notes app"; x.level = 0.05; x.micLoud = true
                                 x.chips = [chip("Open Notes", .running)]; x.statusLine = ""; return x }()),
-            ("05-verified", { var x = m; x.rawText = "open the notes app and create a new note"; x.consumed = "open the notes app and create a new note"; x.level = 0.01
+            ("06-verified", { var x = m; x.rawText = "open the notes app and create a new note"; x.consumed = "open the notes app and create a new note"; x.level = 0.01
                               x.chips = [chip("Open Notes", .verified), chip("New note", .verified)]; x.statusLine = "Cmd+N · note list 12 → 13 rows"; return x }()),
-            ("06-search", { var x = m; x.rawText = "google search norbert wiener"; x.consumed = "google search norbert wiener"; x.level = 0.02
+            ("07-search", { var x = m; x.rawText = "google search norbert wiener"; x.consumed = "google search norbert wiener"; x.level = 0.02
                             x.chips = [chip("Search wikipedia for “Michael Jordan”", .verified)]; x.statusLine = "opened · https://en.wikipedia.org/w/index.php?search=Michael+Jordan&title=Special%3ASearch&ns0=1"; return x }()),
-            ("07-failed", { var x = m; x.rawText = "take a picture of me"; x.consumed = "take a picture of me"; x.level = 0.0
+            ("08-failed", { var x = m; x.rawText = "take a picture of me"; x.consumed = "take a picture of me"; x.level = 0.0
                             x.chips = [chip("Take photo", .failed)]; x.statusLine = "Photo Booth did not come to the front"; return x }()),
-            ("08-confirm", { var x = m; x.rawText = "send the message"; x.consumed = "send the message"; x.pending = "press_enter"; x.statusLine = "confirm"; return x }()),
-            ("09-badges", { var x = m; x.rawText = "click share"; x.consumed = "click share"; x.badgeCount = 2; x.statusLine = "which one?"; return x }()),
-            ("10-paused", { var x = m; x.listening = false; x.statusLine = "paused"; return x }()),
+            ("09-confirm", { var x = m; x.rawText = "send the message"; x.consumed = "send the message"; x.pending = "Return"; return x }()),
+            ("10-badges", { var x = m; x.rawText = "click share"; x.consumed = "click share"; x.badgeCount = 2; return x }()),
+            // "What can I say?" on a Wikipedia page (item 3d).
+            ("11-help", { var x = m; x.help = Suggestions.phrases(bundleId: "com.google.Chrome", pageHost: "en.wikipedia.org"); return x }()),
+            ("12-offline", { var x = m; x.rawText = "open chrome"; x.offline = "timed out"; return x }()),
+            // Hold-to-talk between holds: not listening, but the last result still shows (item 3c).
+            ("13-hold-idle", { var x = m; x.listening = false; x.holdToTalk = true; x.rawText = ""; x.chips = [chip("Open Chrome", .verified)]
+                               x.statusLine = "activated · Google Chrome"; return x }()),
+            ("14-paused", { var x = m; x.listening = false; return x }()),
         ]
         // Menu-bar icons, as they appear on a light and a dark menu bar.
         if let sheet = Self.iconSheet() { try? sheet.write(to: out.appending(path: "menubar-icons.png")) }
@@ -54,13 +64,13 @@ enum UIPreview {
         // Idle again so the collapse (after its 1.8 s linger) is captured too.
         renderer.render(m)
         try? await Task.sleep(for: .milliseconds(2400))
-        if let window, let image = Self.capture(window) { try? image.write(to: out.appending(path: "\(style.rawValue)-11-collapsed.png")) }
+        if let window, let image = Self.capture(window) { try? image.write(to: out.appending(path: "\(style.rawValue)-15-collapsed.png")) }
         app.terminate(nil)
     }
 
     @MainActor
     static func iconSheet() -> Data? {
-        let states: [StatusIcon.State] = [.listening, .speaking, .paused]
+        let states: [StatusIcon.State] = [.listening, .speaking, .paused, .offline]
         let cell: CGFloat = 44
         let size = NSSize(width: cell * CGFloat(states.count) + 16, height: cell * 2 + 24)
         let img = NSImage(size: size)

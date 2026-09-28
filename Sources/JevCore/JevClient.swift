@@ -28,6 +28,29 @@ public enum JevError: Error, CustomStringConvertible, Sendable {
         case .cancelled: "cancelled"
         }
     }
+
+    /// True when Jev could not be reached or could not answer: the network, a timeout, a 5xx, an
+    /// overload, rate limiting, a missing key. False for a bad answer or a cancelled request. The
+    /// voice app shows an outage until the next answer arrives.
+    public var isOutage: Bool {
+        switch self {
+        case .transport, .overloaded, .rateLimited, .missingAPIKey: true
+        case .http(let status, _): status >= 500 || status == 401 || status == 403
+        case .decoding, .malformed, .cancelled: false
+        }
+    }
+
+    /// A few words for the overlay while offline; the full description stays in the run log.
+    public var outageSummary: String {
+        switch self {
+        case .transport(let m): m.contains("timed out") || m.contains("-1001") ? "timed out" : "no connection"
+        case .http(let s, _): s == 401 || s == 403 ? "API key rejected (HTTP \(s))" : "server error (HTTP \(s))"
+        case .overloaded: "Jev is overloaded"
+        case .rateLimited: "rate limited"
+        case .missingAPIKey: "no API key"
+        default: description
+        }
+    }
 }
 
 /// Direct URLSession client for POST /v1/systemone and GET /v1/models. Per-attempt timeout,

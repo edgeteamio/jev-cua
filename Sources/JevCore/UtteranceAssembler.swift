@@ -52,6 +52,14 @@ public struct UtteranceAssembler: Sendable, Equatable {
         return TranscriptRevision(utteranceId: utteranceId, text: text, isFinal: true, at: now)
     }
 
+    /// Hold-to-talk released: the key is the end-of-speech signal, so everything said so far is
+    /// the utterance, final now, with no quiet window. Sent once; nil when nothing was said.
+    public mutating func releaseFinal(at: TimeInterval) -> TranscriptRevision? {
+        guard !text.isEmpty, !finalSent else { return nil }
+        finalSent = true
+        return TranscriptRevision(utteranceId: utteranceId, text: text, isFinal: true, at: at)
+    }
+
     public mutating func noteLoud(at: TimeInterval) { lastLoudAt = max(lastLoudAt, at) }
 
     /// Milliseconds since the transcript last changed or the mic was last loud. A mic that never

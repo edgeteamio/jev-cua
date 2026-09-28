@@ -54,9 +54,10 @@ enum Usage {
                                       writer escalate to ANTHROPIC_API_KEY's model behind a budget (Phase 6)
       goals <suite.json> [--runs N] [--only <text>] [--no-escalation]
                                       Phase 6 acceptance: every workflow and phrasing N times, evidence checked after each run
-      run [--provider dictation|sfspeech] [--ui notch|pill] [--hotkey ctrl+alt+j] [--dry-run] [--speak|--no-speak] [--no-overlay] [--redact] [--no-cache] [--quiet]
+      run [--provider dictation|sfspeech] [--ui notch|pill] [--hotkey ctrl+alt+j] [--hold-to-talk|--always-on] [--dry-run] [--speak|--no-speak] [--no-overlay] [--redact] [--no-cache] [--quiet]
                                       live voice control: notch overlay (or pill), status-bar item, spoken feedback;
-                                      the hot key pauses (default ⌃⌥J), mouse to the top-left corner stops, "stop" cancels
+                                      the hot key pauses (default ⌃⌥J) or, with --hold-to-talk, listens while held;
+                                      mouse to the top-left corner stops, "stop" cancels, "what can I say?" shows examples
       ui-preview [--ui notch|pill] [--out D] [--hold S]
                                       drive the overlay through scripted states and write a PNG per state
       replay runs/<ts> [--json]       re-run the policy over a run's logged answers with the current

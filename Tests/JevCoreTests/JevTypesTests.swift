@@ -128,4 +128,18 @@ import Testing
         #expect(counted.summary == "scroll_down page ×3")
     }
 
+    /// Item 3b: an outage (network, timeout, 5xx, overload, key) shows until Jev answers again; a
+    /// bad answer or a cancellation is not one.
+    @Test func outagesAreToldApartFromBadAnswers() {
+        let timeout = JevError.transport("Error Domain=NSURLErrorDomain Code=-1001 \"The request timed out.\"")
+        #expect(timeout.isOutage)
+        #expect(timeout.outageSummary == "timed out")
+        #expect(JevError.transport("The Internet connection appears to be offline.").outageSummary == "no connection")
+        #expect(JevError.http(status: 503, body: "").isOutage)
+        #expect(JevError.http(status: 401, body: "").outageSummary == "API key rejected (HTTP 401)")
+        #expect(JevError.overloaded(retryAfterMs: nil).isOutage)
+        #expect(!JevError.http(status: 400, body: "").isOutage)
+        #expect(!JevError.decoding("x").isOutage)
+        #expect(!JevError.cancelled.isOutage)
+    }
 }

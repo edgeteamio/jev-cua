@@ -423,4 +423,90 @@ import Testing
         #expect(k.outcome.name == "wait")
     }
 
+    // MARK: Voice-loop UX pass (review 2026-09-28)
+
+    /// Item 1a: free text commits at the commit window (and not before the 600 ms floor), whatever
+    /// `commitWindowMs` decides; this holds for any rule.
+    @Test func freeTextWaitsForItsCommitWindowThenActs() {
+        func at(_ ms: Double) -> PolicyInput {
+            input("google the minnesota vikings", isFinal: false, intent: "web_search", silentMs: ms, site: "google", span: "the minnesota vikings")
+        }
+        let window = Double(Policy.commitWindowMs(intent: "web_search", input: at(0)))
+        let commits = max(window, Double(Config.payloadSilenceMs))
+        #expect(Policy.evaluate(at(commits - 50)).outcome.name == "wait")
+        let r = Policy.evaluate(at(commits))
+        #expect(r.outcome.name == "act")
+        #expect(r.candidate?.action.summary == "web_search google 'minnesota vikings'")
+    }
+
+    /// Item 1b: the preview is exactly what a waiting clause runs once the words stop; nothing
+    /// when it waits on the user or is chatter.
+    @Test func previewIsWhatRunsOnceTheWordsStop() {
+        let waiting = input("google the minnesota vikings", isFinal: false, intent: "web_search", site: "google", span: "the minnesota vikings")
+        #expect(Policy.evaluate(waiting).outcome.name == "wait")
+        #expect(Policy.preview(waiting)?.action.summary == "web_search google 'minnesota vikings'")
+        #expect(Policy.preview(input("google", isFinal: false, intent: "web_search", site: "google")) == nil, "search for what?")
+        #expect(Policy.preview(input("i think we should get lunch", isFinal: false, intent: "none", isCommand: 0.05)) == nil)
+    }
+
+    /// Item 2a: "or Sweden" on a Wikipedia page searched Google live on 2026-09-24.
+    @Test func aSearchWithNoSiteNamedStaysOnTheSiteInFront() {
+        func search(host: String?) -> String? {
+            var i = input("search for sweden", isFinal: true, intent: "web_search", span: "sweden")
+            i.context.pageHost = host
+            return Policy.evaluate(i).candidate?.action.summary
+        }
+        #expect(search(host: "en.wikipedia.org") == "web_search wikipedia 'sweden'")
+        #expect(search(host: "de.wikipedia.org") == "web_search wikipedia 'sweden'", "any language edition")
+        #expect(search(host: "youtube.com") == "web_search youtube 'sweden'")
+        #expect(search(host: "news.ycombinator.com") == "web_search hacker_news 'sweden'")
+        #expect(search(host: "example.com") == "web_search google 'sweden'", "not a catalog site: Google")
+        #expect(search(host: nil) == "web_search google 'sweden'")
+        var named = input("google sweden", isFinal: true, intent: "web_search", site: "google", span: "sweden")
+        named.context.pageHost = "en.wikipedia.org"
+        #expect(Policy.evaluate(named).candidate?.action.summary == "web_search google 'sweden'", "a named site wins over the page")
+    }
+
+    /// Item 2b: "Wikipedia for Sweden" searched `for Sweden` live on 2026-09-24.
+    @Test func theWordJoiningASiteToItsQueryIsDropped() {
+        let wikipedia = Config.site(option: "wikipedia")!, google = Config.site(option: "google")!
+        #expect(CandidateBuilder.cleanQuery("for Sweden", site: wikipedia).text == "Sweden")
+        #expect(CandidateBuilder.cleanQuery("about the vikings", site: google).text == "vikings")
+        #expect(CandidateBuilder.cleanQuery("for", site: google).text == "for", "never empties the query")
+        let live = input("let's do let's Wikipedia for Sweden", isFinal: true, intent: "web_search", site: "wikipedia", span: "for Sweden")
+        #expect(Policy.evaluate(live).candidate?.action.summary == "web_search wikipedia 'Sweden'")
+    }
+
+    /// Item 1c: routine decisions say nothing; what needs the user says so.
+    @Test func onlyWhatTheUserCanActOnReachesTheStatusLine() {
+        let chatter = Policy.evaluate(input("i think we should get lunch", isFinal: false, intent: "none", isCommand: 0.05))
+        #expect(Feedback.statusLine(for: chatter.outcome, reasons: chatter.reasons) == nil)
+        #expect(!Feedback.engages(chatter.outcome), "chatter keeps the notch folded")
+        let speaking = Policy.evaluate(input("google the minnesota", isFinal: false, intent: "web_search", site: "google", span: "the minnesota"))
+        #expect(Feedback.statusLine(for: speaking.outcome, reasons: speaking.reasons) == nil, "still talking")
+        #expect(Feedback.engages(speaking.outcome))
+        let missing = Policy.evaluate(input("google", isFinal: true, intent: "web_search", site: "google"))
+        #expect(Feedback.statusLine(for: missing.outcome, reasons: missing.reasons) == "search for what?")
+        #expect(Feedback.statusLine(for: .ignore(reason: "denied: element 'Delete'"), reasons: []) == "won't do that: element 'Delete'")
+        #expect(Feedback.statusLine(for: .act(candidateId: "c"), reasons: []) == "", "an act clears it; the chip carries it")
+    }
+
+    /// Item 3d: examples follow the app and the page in front.
+    @Test func suggestionsFollowTheAppAndPageInFront() {
+        #expect(Suggestions.phrases(bundleId: "com.apple.Notes", pageHost: nil).first == "create a new note")
+        #expect(Suggestions.phrases(bundleId: "com.google.Chrome", pageHost: "en.wikipedia.org").first == "search for Norbert Wiener")
+        #expect(Suggestions.phrases(bundleId: "com.google.Chrome", pageHost: "www.google.com").first == "google norbert wiener")
+        #expect(Suggestions.phrases(bundleId: "com.example.other", pageHost: nil).contains("open chrome"))
+        #expect(Suggestions.phrases(bundleId: nil, pageHost: nil).count <= 4)
+    }
+
+    /// Item 3d: only actions with a safe inverse can be undone.
+    @Test func undoIsOfferedOnlyWhereItIsSafe() {
+        let search = Action.webSearch(url: "https://www.google.com/search?q=x", query: "x", site: "google")
+        #expect(Undo.inverse(of: search, detail: Undo.navigatedInPlace) == .goBack)
+        #expect(Undo.inverse(of: search, detail: "opened") == nil, "a new tab: Back would not undo it")
+        #expect(Undo.inverse(of: .typeText(text: "hi"), detail: "ok") == .menuItem(id: "undo", path: "Edit › Undo"))
+        #expect(Undo.inverse(of: .clickElement(elementId: "e01"), detail: "ok") == nil)
+        #expect(Undo.inverse(of: .openApp(bundleId: "com.apple.Notes", name: "Notes"), detail: "activated") == nil)
+    }
 }

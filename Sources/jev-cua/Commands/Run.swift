@@ -4,6 +4,7 @@ import Carbon.HIToolbox
 import Foundation
 import JevCore
 import JevMac
+import os
 
 /// `jev-cua run [--provider dictation|sfspeech] [--ui notch|pill] [--hotkey ctrl+alt+j] [--dry-run] [--speak|--no-speak] [--no-overlay] [--redact] [--no-cache] [--quiet]`
 /// Live voice control (plan Phase 3): recognizer -> VoiceLoop -> CommandSession -> executor, with
@@ -48,7 +49,9 @@ enum Run {
 
         let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         let log = try RunLog(runsRoot: cwd.appending(path: "runs"), redact: args.flag("redact"))
-        let live = try JevClient()
+        // Shorter than the CLI's 5 s: a decision older than this is stale, and an outage should
+        // show at once rather than as commands that silently never happen.
+        let live = try JevClient(timeout: Config.liveDecisionTimeoutS, maxRetryDelayMs: Config.liveRetryDelayMs)
         let decider: any JevDeciding = args.flag("no-cache") ? live : JevCache(path: JevCache.livePath(cwd), live: live)
         let perception = MacPerception(log: log)
         let executor = MacExecutor(mode: args.flag("dry-run") ? .dryRun : .live, log: log, resolver: perception)
@@ -67,6 +70,7 @@ enum Run {
         let session = CommandSession(decider: decider, perception: perception, executor: executor, log: log, config: cfg) { ev in
             printer?.print(ev)
             if let phrase = Speaker.phrase(for: ev) { speaker.say(phrase) }
+            if let chime = Speaker.chime(for: ev) { speaker.chime(chime) }
             Task { @MainActor in ui.apply(ev) }
         }
 
@@ -78,6 +82,8 @@ enum Run {
         }
         let loop = VoiceLoop(provider: provider, audio: audio, session: session) { st in Task { @MainActor in ui.apply(st) } }
         ui.attach(loop: loop, session: session)
+        // Hovering the notch suggests a phrase for the app in front (item 3d).
+        ui.hoverHint = { Suggestions.phrases(bundleId: Apps.frontmost().bundleId, pageHost: nil).randomElement() }
 
         let stopper = Stopper(loop: loop, session: session, speaker: speaker, log: log)
         stopper.install(hotKeySpec: args.string("hotkey"))
@@ -86,7 +92,11 @@ enum Run {
         watcher.start()
 
         try await loop.start()
-        print("listening (\(provider.name)); \(stopper.hotKey.display) pauses, mouse to the top-left corner stops, say \"stop\" to cancel; log \(log.directory.lastPathComponent)")
+        // Hold-to-talk (item 3c): the flag wins, else the menu's last choice.
+        let hold = args.flag("hold-to-talk") || (!args.flag("always-on") && UserDefaults.standard.bool(forKey: RunUI.holdToTalkKey))
+        if hold { await loop.setHoldToTalk(true) }
+        let keys = hold ? "hold \(stopper.hotKey.display) to talk" : "\(stopper.hotKey.display) pauses"
+        print("listening (\(provider.name)); \(keys), mouse to the top-left corner stops, say \"stop\" to cancel, \"what can I say?\" for examples; log \(log.directory.lastPathComponent)")
         ui.show()
 
         Run.live = Live(log: log, decider: decider, perception: perception, executor: executor, audio: audio, speaker: speaker,
@@ -166,26 +176,35 @@ final class Stopper: @unchecked Sendable {
         // Accessibility, which the app has); either delivers, a 300 ms debounce keeps a double
         // delivery from toggling twice, and the log says which path fired. Neither sees a key
         // that another app's event tap swallows first.
-        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+        // Presses and releases: a release matters for hold-to-talk (item 3c).
+        var specs = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+                     EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased))]
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-        let installed = InstallEventHandler(GetApplicationEventTarget(), { _, _, userData in
+        let installed = InstallEventHandler(GetApplicationEventTarget(), { _, event, userData in
             guard let userData else { return noErr }
             let me = Unmanaged<Stopper>.fromOpaque(userData).takeUnretainedValue()
-            Task { await me.hotKeyHit(source: "carbon") }
+            let down = event.map { GetEventKind($0) == UInt32(kEventHotKeyPressed) } ?? true
+            Task { if down { await me.keyDown(source: "carbon") } else { await me.keyUp(source: "carbon") } }
             return noErr
-        }, 1, &spec, selfPtr, nil)
+        }, 2, &specs, selfPtr, nil)
         let id = EventHotKeyID(signature: OSType(0x4A455643) /* JEVC */, id: 1)
         let registered = RegisterEventHotKey(hotKey.keyCode, hotKey.carbonModifiers, id, GetApplicationEventTarget(), 0, &hotKeyRef)
         let wanted = hotKey
-        monitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] ev in
-            guard ev.keyCode == UInt16(wanted.keyCode), ev.modifierFlags.intersection([.control, .option, .shift, .command]) == wanted.flags else { return }
-            Task { await self?.hotKeyHit(source: "monitor") }
+        monitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] ev in
+            guard ev.keyCode == UInt16(wanted.keyCode) else { return }
+            if ev.type == .keyDown {
+                guard !ev.isARepeat, ev.modifierFlags.intersection([.control, .option, .shift, .command]) == wanted.flags else { return }
+                Task { await self?.keyDown(source: "monitor") }
+            } else {
+                Task { await self?.keyUp(source: "monitor") }   // whatever the modifiers do: they often come up first
+            }
         }
         log.log("hotkey_install", ["hotkey": .string(hotKey.display), "carbon_handler": .number(Double(installed)), "carbon_register": .number(Double(registered)),
                                    "monitor": .bool(monitor != nil)])
 
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self else { return }
+            self.pollHeldKey(wanted.keyCode)
             let p = NSEvent.mouseLocation
             let inCorner = NSScreen.screens.contains { s in p.x <= s.frame.minX + 2 && p.y >= s.frame.maxY - 2 }
             if inCorner {
@@ -206,7 +225,54 @@ final class Stopper: @unchecked Sendable {
     func togglePause() async {
         let paused = loop.isPaused
         await loop.setPaused(!paused)
-        speaker.say(paused ? "Listening" : "Paused")
+        // A chime, not "Listening": speech mutes the mic for about a second (item 3a).
+        speaker.chime(paused ? .listening : .paused)
+    }
+
+    // MARK: Hold-to-talk (item 3c)
+
+    /// Whether the key is held, and whether the key-state poll can see it. Both delivery paths
+    /// (Carbon and the monitor) report every press and release, so changes go through the lock.
+    private let hold = OSAllocatedUnfairLock(initialState: (held: false, since: 0.0, pollUsable: true, misses: 0))
+
+    func keyDown(source: String) async {
+        guard loop.isHoldToTalk else { await hotKeyHit(source: source); return }   // toggle mode, as before
+        let began = hold.withLock { h -> Bool in
+            guard !h.held else { return false }
+            h.held = true; h.since = Mono.now(); h.misses = 0
+            return true
+        }
+        guard began else { return }
+        // Can the poll read the key? It is down right now, so a "not down" means it cannot.
+        if !CGEventSource.keyState(.combinedSessionState, key: CGKeyCode(hotKey.keyCode)) { hold.withLock { $0.pollUsable = false } }
+        log.log("hotkey", ["source": .string(source), "hold": .string("down")])
+        speaker.chime(.listening)
+        await loop.holdBegan()
+    }
+
+    func keyUp(source: String) async {
+        guard loop.isHoldToTalk else { return }
+        let ended = hold.withLock { h -> Bool in
+            guard h.held else { return false }
+            h.held = false
+            return true
+        }
+        guard ended else { return }
+        log.log("hotkey", ["source": .string(source), "hold": .string("up")])
+        // No chime here: people let go on the last syllable, and a chime would mute it.
+        await loop.holdEnded()
+    }
+
+    /// A release both paths missed (a key-up swallowed by another app's event tap) would leave
+    /// the mic open: the timer checks that a held key is still down.
+    private func pollHeldKey(_ keyCode: UInt32) {
+        let released = hold.withLock { h -> Bool in
+            guard h.held, h.pollUsable, Mono.now() - h.since > 0.3 else { return false }
+            if CGEventSource.keyState(.combinedSessionState, key: CGKeyCode(keyCode)) { h.misses = 0; return false }
+            h.misses += 1
+            return h.misses >= 2
+        }
+        if released { Task { await keyUp(source: "poll") } }
     }
 
     func panic() async {
@@ -230,15 +296,32 @@ struct OverlayModel: Equatable {
     var listening = false
     var micLoud = false
     var level: Float = 0
-    var statusLine = "listening"
+    var statusLine = ""
     var pending: String?
     var badgeCount = 0
     var chips: [Chip] = []
     var dryRun = false
     var hotKey = "⌃⌥J"
-    /// True while there is something to show (text, a chip, a pending prompt); the notch
-    /// collapses after a short delay when this goes false.
-    var active: Bool { !rawText.isEmpty || pending != nil || badgeCount > 0 || !chips.isEmpty }
+    /// The words may be addressed to the computer (a decision other than chatter), or "Show all
+    /// speech" is on. The transcript opens the notch only then (item 1c).
+    var engaged = false
+    /// The action a clause will run once the words stop, drawn as a ghost chip (item 1b).
+    var armed: String?
+    /// Jev is unreachable, in a few words (item 3b).
+    var offline: String?
+    /// Example phrases answering "what can I say?" (item 3d).
+    var help: [String]?
+    /// A short message that is not a decision: an undo that cannot run, a lapsed confirmation.
+    var notice: String?
+    var holdToTalk = false
+    /// Paused by the user. Between holds, hold-to-talk is idle, not paused: results still show.
+    var paused: Bool { !listening && !holdToTalk }
+    /// True while there is something to show; the notch collapses after a short delay when this
+    /// goes false.
+    var active: Bool {
+        (engaged && !rawText.isEmpty) || pending != nil || badgeCount > 0 || !chips.isEmpty || armed != nil || help != nil || notice != nil
+            || (offline != nil && !rawText.isEmpty)
+    }
 }
 
 @MainActor
@@ -254,6 +337,8 @@ protocol OverlayRenderer: AnyObject {
 @MainActor
 final class RunUI: NSObject {
     enum Style: String { case notch, pill, none }
+    static let holdToTalkKey = "holdToTalk"
+    static let showAllSpeechKey = "showAllSpeech"
     private var renderer: (any OverlayRenderer)?
     private var statusItem: NSStatusItem?
     let badges = BadgeOverlay()
@@ -261,16 +346,29 @@ final class RunUI: NSObject {
     private weak var loop: VoiceLoop?
     private weak var session: CommandSession?
     var onQuit: (() -> Void)?
-    var hotKeyDisplay = "⌃⌥J" { didSet { listenItem?.title = "Listening (\(hotKeyDisplay))"; model.hotKey = hotKeyDisplay } }
+    var hotKeyDisplay = "⌃⌥J" { didSet { model.hotKey = hotKeyDisplay } }
     var trace: ((String, [String: JSONValue]) -> Void)? { didSet { (renderer as? NotchWindow)?.trace = trace } }
-    private var listenItem: NSMenuItem?
+    /// A phrase to suggest when the pointer rests on the notch (item 3d).
+    var hoverHint: (() -> String?)? { didSet { (renderer as? NotchWindow)?.hoverHint = hoverHint } }
     private var model = OverlayModel()
     private var chipsUtterance = ""
+    /// "Show all speech": chatter opens the notch too (the old behavior), to watch what it hears.
+    private var showAllSpeech = UserDefaults.standard.bool(forKey: RunUI.showAllSpeechKey)
+    /// The status menu's "Recent actions", newest first.
+    private var recent: [(label: String, state: OverlayModel.Chip.State, at: Date)] = []
+    /// The action running now, and the last one that can be undone (the session's rule, mirrored
+    /// here so the menu item can say what it would undo).
+    private var running: (label: String, action: Action)?
+    private var undoLabel: String?
+    private var helpClear: Task<Void, Never>?
+    private var noticeClear: Task<Void, Never>?
+    private var statusKey = ""
 
     init(style: Style, dryRun: Bool, speaker: Speaker) {
         self.speaker = speaker
         super.init()
         model.dryRun = dryRun
+        model.engaged = showAllSpeech
         switch style {
         case .notch: renderer = NotchWindow()
         case .pill: renderer = PillWindow()
@@ -290,11 +388,14 @@ final class RunUI: NSObject {
 
     func apply(_ st: VoiceLoop.Status) {
         model.rawText = st.text; model.listening = st.listening; model.micLoud = st.micLoud; model.level = st.level
+        model.holdToTalk = st.holdToTalk
         if st.text.isEmpty { model.consumed = "" }
         if st.utteranceId != chipsUtterance, !st.text.isEmpty {
-            // A new utterance: chips from the previous one make way once new words arrive.
+            // A new utterance: the last one's chips, status, and examples make way once new words
+            // arrive, and the notch waits to hear something like a command before it opens.
             chipsUtterance = st.utteranceId
-            model.chips = []
+            model.chips = []; model.statusLine = ""; model.help = nil
+            model.engaged = showAllSpeech
         }
         render()
     }
@@ -302,36 +403,77 @@ final class RunUI: NSObject {
     func apply(_ ev: SessionEvent) {
         switch ev {
         case .transcript(_, _, let c, _): model.consumed = c
-        case .deciding: model.statusLine = "deciding…"
-        case .decided(let d, let summary, _):
-            model.statusLine = d.outcome.name == "act" ? "" : summary
+        case .deciding: break   // routine and never shown: at one every ~110 ms it read as flicker
+        case .decided(let d, _, _):
+            if Feedback.engages(d.outcome) { model.engaged = true }
+            if let line = Feedback.statusLine(for: d.outcome, reasons: d.reasons) { model.statusLine = line }
+        case .armed(let c): model.armed = c?.humanLabel
         case .dispatched(_, let c):
+            model.armed = nil   // the running chip takes the ghost chip's place
+            model.engaged = true
             model.statusLine = ""   // the chip carries it; the verification fills this in
             model.chips.append(.init(label: c.humanLabel, state: .running))
             if model.chips.count > 4 { model.chips.removeFirst() }
             badges.show([]); model.badgeCount = 0
+            running = (c.humanLabel, c.action)
+            recent.insert((c.humanLabel, .running, Date()), at: 0)
+            if recent.count > 8 { recent.removeLast() }
         case .executed(_, let o):
             model.statusLine = "\(o.result.detail)\(o.verification.observed.isEmpty ? "" : " · \(o.verification.observed)")"
-            if let i = model.chips.lastIndex(where: { $0.state == .running }) {
-                model.chips[i].state = o.verification.outcome == .verified ? .verified : (o.verification.outcome == .failed ? .failed : .unknown)
+            let state: OverlayModel.Chip.State = o.verification.outcome == .verified ? .verified : (o.verification.outcome == .failed ? .failed : .unknown)
+            if let i = model.chips.lastIndex(where: { $0.state == .running }) { model.chips[i].state = state }
+            if let i = recent.firstIndex(where: { $0.state == .running }) { recent[i].state = state }
+            if let r = running {
+                let ok = o.result.status == .acknowledged && o.verification.outcome != .failed
+                undoLabel = ok && Undo.inverse(of: r.action, detail: o.result.detail) != nil ? r.label : nil
             }
-        case .pendingConfirmation(let c): model.pending = c?.action.summary
+            running = nil
+        case .pendingConfirmation(let c): model.pending = c?.humanLabel
         case .disambiguation(let els): badges.show(els ?? []); model.badgeCount = els?.count ?? 0
-        case .cancelled(let r): model.statusLine = "cancelled: \(r)"; model.consumed = ""; model.chips = []; badges.show([]); model.badgeCount = 0
+        case .cancelled(let r):
+            model.statusLine = "cancelled: \(r)"; model.consumed = ""; model.chips = []; model.armed = nil
+            badges.show([]); model.badgeCount = 0
         case .error(let m): model.statusLine = "error: \(m)"
+        case .offline(let why): model.offline = why
+        case .help(let phrases): show(help: phrases)
+        case .notice(let m): show(notice: m)
         }
         render()
     }
 
-    private var statusIconState: StatusIcon.State?
+    private func show(help phrases: [String]) {
+        model.help = phrases
+        helpClear?.cancel()
+        helpClear = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled, let self else { return }
+            self.model.help = nil; self.render()
+        }
+    }
+
+    private func show(notice text: String) {
+        model.notice = text
+        noticeClear?.cancel()
+        noticeClear = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled, let self else { return }
+            self.model.notice = nil; self.render()
+        }
+    }
 
     private func render() {
         renderer?.render(model)
-        let state: StatusIcon.State = !model.listening ? .paused : (model.micLoud ? .speaking : .listening)
-        if state != statusIconState {
-            statusIconState = state
+        let state: StatusIcon.State = model.offline != nil ? .offline : (!model.listening ? .paused : (model.micLoud ? .speaking : .listening))
+        let tip: String = switch state {
+        case .offline: "jev-cua: can't reach Jev (\(model.offline ?? ""))"
+        case .paused: model.holdToTalk ? "jev-cua: hold \(hotKeyDisplay) to talk" : "jev-cua: paused"
+        default: "jev-cua: \(state.rawValue)"
+        }
+        let key = "\(state.rawValue)|\(tip)"
+        if key != statusKey {
+            statusKey = key
             statusItem?.button?.image = StatusIcon.image(for: state)
-            statusItem?.button?.toolTip = "jev-cua: \(state.rawValue)" + (model.dryRun ? " (dry run)" : "")
+            statusItem?.button?.toolTip = tip + (model.dryRun ? " (dry run)" : "")
         }
     }
 
@@ -341,24 +483,28 @@ final class RunUI: NSObject {
         item.button?.imagePosition = .imageOnly
         item.button?.toolTip = "jev-cua"
         let menu = NSMenu()
-        let listen = NSMenuItem(title: "Listening (\(hotKeyDisplay))", action: #selector(toggleListening), keyEquivalent: "")
-        listen.target = self; listen.tag = 1
-        listenItem = listen
-        menu.addItem(listen)
-        let speak = NSMenuItem(title: "Spoken feedback", action: #selector(toggleSpeak), keyEquivalent: "")
-        speak.target = self; speak.tag = 2
-        menu.addItem(speak)
-        let overlay = NSMenuItem(title: "Show overlay", action: #selector(toggleOverlay), keyEquivalent: "")
-        overlay.target = self; overlay.tag = 3
-        menu.addItem(overlay)
+        menu.autoenablesItems = false
+        func add(_ title: String, _ action: Selector?, tag: Int = 0, key: String = "") -> NSMenuItem {
+            let i = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            i.target = self; i.tag = tag
+            menu.addItem(i)
+            return i
+        }
+        _ = add("Listening (\(hotKeyDisplay))", #selector(toggleListening), tag: 1)
+        _ = add("Hold \(hotKeyDisplay) to talk", #selector(toggleHold), tag: 4)
         menu.addItem(.separator())
-        let runs = NSMenuItem(title: "Open runs folder", action: #selector(openRuns), keyEquivalent: "")
-        runs.target = self
-        menu.addItem(runs)
+        _ = add("What can I say?", #selector(showExamples))
+        add("Recent actions", nil, tag: 6).submenu = NSMenu()
+        _ = add("Undo last action", #selector(undoLast), tag: 7)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit jev-cua", action: #selector(quit), keyEquivalent: "q")
-        quit.target = self
-        menu.addItem(quit)
+        _ = add("Spoken feedback", #selector(toggleSpeak), tag: 2)
+        _ = add("Sounds", #selector(toggleSounds), tag: 5)
+        _ = add("Show overlay", #selector(toggleOverlay), tag: 3)
+        _ = add("Show all speech", #selector(toggleShowAll), tag: 8)
+        menu.addItem(.separator())
+        _ = add("Open runs folder", #selector(openRuns))
+        menu.addItem(.separator())
+        _ = add("Quit jev-cua", #selector(quit), key: "q")
         menu.delegate = self
         item.menu = menu
         statusItem = item
@@ -367,22 +513,74 @@ final class RunUI: NSObject {
     @objc private func toggleListening() {
         Task { [weak self] in
             guard let self, let loop = self.loop else { return }
+            // Hold-to-talk has nothing to toggle (the key is held to talk): a click shows examples.
+            if loop.isHoldToTalk { await self.session?.showHelp(); return }
             let paused = loop.isPaused
             await loop.setPaused(!paused)
-            self.speaker.say(paused ? "Listening" : "Paused")
+            self.speaker.chime(paused ? .listening : .paused)
         }
     }
+    @objc private func toggleHold() {
+        Task { [weak self] in
+            guard let self, let loop = self.loop else { return }
+            let on = !loop.isHoldToTalk
+            await loop.setHoldToTalk(on)
+            UserDefaults.standard.set(on, forKey: Self.holdToTalkKey)
+            self.speaker.chime(on ? .paused : .listening)
+        }
+    }
+    @objc private func showExamples() { Task { [weak self] in await self?.session?.showHelp() } }
+    @objc private func undoLast() { Task { [weak self] in await self?.session?.undoLast() } }
     @objc private func toggleSpeak() { speaker.enabled.toggle() }
+    @objc private func toggleSounds() { speaker.soundsEnabled.toggle() }
     @objc private func toggleOverlay() { guard let r = renderer else { return }; r.isVisible ? r.hide() : r.show() }
+    @objc private func toggleShowAll() {
+        showAllSpeech.toggle()
+        UserDefaults.standard.set(showAllSpeech, forKey: Self.showAllSpeechKey)
+        if showAllSpeech { model.engaged = true }
+        render()
+    }
     @objc private func openRuns() { NSWorkspace.shared.open(URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appending(path: "runs")) }
     @objc private func quit() { onQuit?() }
+
+    static func mark(_ s: OverlayModel.Chip.State) -> String {
+        switch s {
+        case .running: "▶"
+        case .verified: "✓"
+        case .unknown: "?"
+        case .failed: "✗"
+        }
+    }
+
+    static func ago(_ d: Date) -> String {
+        let s = max(0, Int(-d.timeIntervalSinceNow))
+        return s < 60 ? "\(s) s ago" : "\(s / 60) min ago"
+    }
 }
 
 extension RunUI: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
-        menu.item(withTag: 1)?.state = model.listening ? .on : .off
+        let hold = model.holdToTalk
+        if let l = menu.item(withTag: 1) {
+            l.title = hold ? "Listening (while \(hotKeyDisplay) is held)" : "Listening (\(hotKeyDisplay))"
+            l.state = model.listening && !hold ? .on : .off
+            l.isEnabled = !hold
+        }
+        if let h = menu.item(withTag: 4) { h.title = "Hold \(hotKeyDisplay) to talk"; h.state = hold ? .on : .off }
         menu.item(withTag: 2)?.state = speaker.enabled ? .on : .off
+        menu.item(withTag: 5)?.state = speaker.soundsEnabled ? .on : .off
         menu.item(withTag: 3)?.state = (renderer?.isVisible ?? false) ? .on : .off
+        menu.item(withTag: 8)?.state = showAllSpeech ? .on : .off
+        if let u = menu.item(withTag: 7) {
+            u.title = undoLabel.map { "Undo \($0)" } ?? "Undo last action"
+            u.isEnabled = undoLabel != nil
+        }
+        if let sub = menu.item(withTag: 6)?.submenu {
+            sub.removeAllItems()
+            func row(_ title: String) -> NSMenuItem { let i = NSMenuItem(title: title, action: nil, keyEquivalent: ""); i.isEnabled = false; return i }
+            if recent.isEmpty { sub.addItem(row("Nothing yet")) }
+            for r in recent { sub.addItem(row("\(Self.mark(r.state))  \(r.label)  ·  \(Self.ago(r.at))")) }
+        }
     }
 }
 
@@ -446,7 +644,10 @@ final class PillWindow: OverlayRenderer {
 
     func render(_ m: OverlayModel) {
         transcriptField.attributedStringValue = OverlayText.transcript(m, size: 20, bright: .labelColor, dim: .tertiaryLabelColor)
-        var s = OverlayText.compactEvidence(m.statusLine)
+        if let help = m.help, m.rawText.isEmpty { transcriptField.attributedStringValue = OverlayText.help(help, size: 18, bright: .labelColor, dim: .tertiaryLabelColor) }
+        var s = OverlayText.compactEvidence(m.notice ?? m.statusLine)
+        if let armed = m.armed { s = "⋯ \(armed)  (when you stop talking)" }
+        if let why = m.offline { s = "can't reach Jev · \(why)" }
         if let pending = m.pending { s = "confirm? \(pending)   (say \"confirm\" or \"cancel\")" }
         if m.badgeCount > 0 { s = "which one? say a number, 1 to \(m.badgeCount)" }
         if m.dryRun { s = "[dry run] " + s }
@@ -474,14 +675,21 @@ enum OverlayText {
             text.append(NSAttributedString(string: String(m.rawText[..<range.upperBound]), attributes: dimA))
             text.append(NSAttributedString(string: String(m.rawText[range.upperBound...]), attributes: brightA))
         } else {
-            let placeholder = m.listening ? "Listening…" : "Paused"
+            let placeholder = m.listening ? "Listening…" : (m.holdToTalk ? "Hold \(m.hotKey) to talk" : "Paused")
             text.append(NSAttributedString(string: m.rawText.isEmpty ? placeholder : m.rawText, attributes: m.rawText.isEmpty ? dimA : brightA))
         }
         return text
     }
 
-    /// Yellow while paused, green while listening (bright while the mic is loud).
+    /// "Try “scroll down” · “go back” · …": the answer to "what can I say?".
     @MainActor
+    static func help(_ phrases: [String], size: CGFloat, bright: NSColor, dim: NSColor) -> NSAttributedString {
+        let text = NSMutableAttributedString(string: "Try  ", attributes: [.foregroundColor: dim, .font: NSFont.systemFont(ofSize: size, weight: .medium)])
+        text.append(NSAttributedString(string: phrases.map { "“\($0)”" }.joined(separator: "  ·  "),
+                                       attributes: [.foregroundColor: bright, .font: NSFont.systemFont(ofSize: size, weight: .medium)]))
+        return text
+    }
+
     /// Evidence for the overlay: a URL becomes its host and the start of its path
     /// ("en.wikipedia.org/w/…"); the full string stays in the run log.
     static func compactEvidence(_ s: String) -> String {
@@ -503,8 +711,13 @@ enum OverlayText {
         return out
     }
 
+    /// Orange while Jev is unreachable, yellow while paused, dim white between holds, green while
+    /// listening (bright while the mic is loud, so the folded notch still shows it hears you).
     static func dotColor(_ m: OverlayModel) -> NSColor {
-        !m.listening ? .systemYellow : (m.micLoud ? .systemGreen : NSColor.systemGreen.withAlphaComponent(0.7))
+        if m.offline != nil { return .systemOrange }
+        if m.paused { return .systemYellow }
+        if !m.listening { return NSColor.white.withAlphaComponent(0.55) }
+        return m.micLoud ? .systemGreen : NSColor.systemGreen.withAlphaComponent(0.7)
     }
 }
 
@@ -552,9 +765,9 @@ final class BadgeOverlay {
 
 /// Menu-bar icon: an SF Symbol rendered as a template image, so it follows the menu bar's light
 /// or dark appearance. Listening = a microphone; speaking = a waveform (the mic is above the
-/// loud threshold); paused = a crossed microphone.
+/// loud threshold); paused = a crossed microphone; offline = the network warning.
 enum StatusIcon {
-    enum State: String { case listening, speaking, paused }
+    enum State: String { case listening, speaking, paused, offline }
 
     @MainActor
     static func image(for state: State) -> NSImage? {
@@ -563,9 +776,11 @@ enum StatusIcon {
         case .listening: name = "mic"
         case .speaking: name = "waveform"
         case .paused: name = "mic.slash"
+        case .offline: name = "wifi.exclamationmark"
         }
         let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
-        guard let img = NSImage(systemSymbolName: name, accessibilityDescription: "jev-cua \(state.rawValue)")?.withSymbolConfiguration(config) else { return nil }
+        guard let img = (NSImage(systemSymbolName: name, accessibilityDescription: "jev-cua \(state.rawValue)")
+                         ?? NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "jev-cua \(state.rawValue)"))?.withSymbolConfiguration(config) else { return nil }
         img.isTemplate = true
         return img
     }

@@ -99,8 +99,7 @@
       "check": {
         "last_action_verified": "menu_item"
       },
-      "expected_fail": true,
-      "note": "Known limit on this Mac (2026-09-22): Chrome's profile picker window ('Who's using Chrome?') was open and is Chrome's key window, so AXPress on File › New Tab, ⌘T through the HID tap, and the strip's + button all left the tab count at 17. Re-run with the picker closed; when it passes, untag expected_fail. The executor now falls back from AXPress to the item's own shortcut and verifies new/closed tabs by the strip's tab count."
+      "note": "Was a known limit (2026-09-22): Chrome's profile picker window ('Who's using Chrome?') was open and is Chrome's key window, so AXPress on File › New Tab, ⌘T through the HID tap, and the strip's + button all left the tab count at 17. Passed with the picker closed on 2026-09-28 (runs/2026-09-28T12-10-14Z) and untagged. The executor falls back from AXPress to the item's own shortcut and verifies new/closed tabs by the strip's tab count. If it fails again, check for the picker first (`jev-cua ax --tabs`)."
     },
     {
       "name": "repeat the last action",

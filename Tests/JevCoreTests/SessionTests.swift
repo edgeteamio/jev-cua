@@ -17,6 +17,8 @@ struct Scenario: Decodable {
     var name: String
     var field: FocusedField?
     var elements: [Element]?
+    /// The browser's front tab host, when the scenario has a page open.
+    var pageHost: String?
     var steps: [Step]
     var expect: Expect
 }
@@ -40,7 +42,7 @@ struct Scenarios: Decodable { var scenarios: [Scenario] }
     @Test(arguments: try load())
     func replay(_ s: Scenario) async throws {
         let clock = ManualClock()
-        let perception = FakePerception(field: s.field, elements: s.elements ?? [])
+        let perception = FakePerception(field: s.field, elements: s.elements ?? [], pageHost: s.pageHost)
         let executor = FakeExecutor(perception: perception)
         let collector = Collector()
         let session = CommandSession(decider: FakeJev(), perception: perception, executor: executor, log: RunLog.discarding(),

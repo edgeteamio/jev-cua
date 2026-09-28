@@ -21,6 +21,10 @@ final class NotchWindow: OverlayRenderer {
     private var hoverTimer: Timer?
     private var hovering = false
     private var hoverSince: TimeInterval?
+    /// A phrase to suggest on hover (the app in front's examples); picked once per hover so the
+    /// hint does not reshuffle while the pointer rests there.
+    var hoverHint: (() -> String?)?
+    private var hoverText: String?
     /// Render trace into the run log (kind "ui"), for diagnosing a notch that does not update.
     var trace: ((String, [String: JSONValue]) -> Void)?
     private var renders = 0
@@ -107,7 +111,7 @@ final class NotchWindow: OverlayRenderer {
         let inside = panel.frame.insetBy(dx: -6, dy: -6).contains(p)
         if inside {
             if hoverSince == nil { hoverSince = Mono.now() }
-            if !hovering, let since = hoverSince, Mono.now() - since >= 0.15 { hovering = true; render(lastModel) }
+            if !hovering, let since = hoverSince, Mono.now() - since >= 0.15 { hovering = true; hoverText = hoverHint?(); render(lastModel) }
         } else if hovering || hoverSince != nil {
             hovering = false; hoverSince = nil; render(lastModel)
         }
@@ -150,7 +154,7 @@ final class NotchWindow: OverlayRenderer {
     func render(_ m: OverlayModel) {
         lastModel = m
         renders += 1
-        let sig = "\(m.rawText)|\(m.chips.count)|\(expanded)|\(panel.isVisible)|\(m.pending ?? "")|\(m.badgeCount)"
+        let sig = "\(m.rawText)|\(m.chips.count)|\(expanded)|\(panel.isVisible)|\(m.pending ?? "")|\(m.badgeCount)|\(m.armed ?? "")|\(m.offline ?? "")|\(m.help?.count ?? 0)|\(m.engaged)"
         if sig != lastSig {
             lastSig = sig
             trace?("render", ["n": .number(Double(renders)), "text": .string(String(m.rawText.suffix(40))), "chips": .number(Double(m.chips.count)),
@@ -160,10 +164,16 @@ final class NotchWindow: OverlayRenderer {
                               "thread": .bool(Thread.isMainThread)])
         }
         transcriptField.attributedStringValue = OverlayText.transcript(m, size: 16, bright: .white, dim: NSColor.white.withAlphaComponent(0.4))
-        var status = m.statusLine
+        // Status line, most urgent last: a notice or the evidence, the outage, then what needs an answer.
+        var status = m.notice ?? m.statusLine
         var needsUser = false
+        if let why = m.offline { status = "can't reach Jev · \(why)"; needsUser = true }
         if let pending = m.pending { status = "confirm? \(pending)  ·  say \"confirm\" or \"cancel\""; needsUser = true }
         if m.badgeCount > 0 { status = "which one? say a number, 1 to \(m.badgeCount)"; needsUser = true }
+        if let help = m.help, m.rawText.isEmpty {
+            transcriptField.attributedStringValue = OverlayText.help(help, size: 15, bright: .white, dim: NSColor.white.withAlphaComponent(0.45))
+            status = m.holdToTalk ? "hold \(m.hotKey) and speak  ·  \"stop\" cancels" : "\"stop\" cancels  ·  \(m.hotKey) pauses"
+        }
         if m.dryRun { status = "[dry run] " + status }
         statusField.stringValue = OverlayText.compactEvidence(status.replacingOccurrences(of: " -> ", with: " → "))
         statusField.textColor = needsUser ? .systemOrange : NSColor.white.withAlphaComponent(0.55)
@@ -171,20 +181,24 @@ final class NotchWindow: OverlayRenderer {
         dot.layer?.backgroundColor = OverlayText.dotColor(m).cgColor
         dot.layer?.shadowColor = OverlayText.dotColor(m).cgColor
         meter.level = m.listening ? m.level : 0
-        meter.tint = m.listening ? .systemGreen : .systemYellow
-        rebuildChips(m.chips)
+        meter.tint = m.listening ? .systemGreen : (m.paused ? .systemYellow : NSColor.white.withAlphaComponent(0.5))
+        rebuildChips(m.chips, armed: m.armed)
 
-        if m.rawText.isEmpty, m.chips.isEmpty, hovering {
+        if m.rawText.isEmpty, m.chips.isEmpty, m.help == nil, m.armed == nil, hovering {
             // Hover with nothing to show: a hint instead of "Listening…".
-            transcriptField.attributedStringValue = OverlayText.transcript(
-                { var h = m; h.rawText = m.listening ? "Say a command, e.g. \"open notes\"" : "Paused  ·  \(m.hotKey) to listen"; return h }(),
-                size: 16, bright: NSColor.white.withAlphaComponent(0.6), dim: NSColor.white.withAlphaComponent(0.4))
+            let hint: String
+            if m.paused { hint = "Paused  ·  \(m.hotKey) to listen" }
+            else if m.holdToTalk, !m.listening { hint = "Hold \(m.hotKey) and speak  ·  click for examples" }
+            else if let s = hoverText { hint = "Try “\(s)”  ·  or ask “what can I say?”" }
+            else { hint = "Say a command, e.g. \"open notes\"" }
+            transcriptField.attributedStringValue = OverlayText.transcript({ var h = m; h.rawText = hint; h.consumed = ""; return h }(),
+                                                                         size: 16, bright: NSColor.white.withAlphaComponent(0.6), dim: NSColor.white.withAlphaComponent(0.4))
         }
-        let wantExpanded = (m.active && m.listening) || hovering
+        let wantExpanded = (m.active && !m.paused) || hovering
         if wantExpanded != expanded {
             collapseTask?.cancel(); collapseTask = nil
             if wantExpanded { setExpanded(true) }
-            else if !m.listening { setExpanded(false) }   // paused: fold at once, no linger
+            else if m.paused { setExpanded(false) }   // paused: fold at once, no linger
             else {
                 // Linger so the last chip state is readable, then fold back into the notch.
                 collapseTask = Task { [weak self] in
@@ -238,8 +252,13 @@ final class NotchWindow: OverlayRenderer {
         }
     }
 
-    private func rebuildChips(_ chips: [OverlayModel.Chip]) {
+    private func rebuildChips(_ chips: [OverlayModel.Chip], armed: String?) {
         for v in chipRow.arrangedSubviews where v !== statusField { chipRow.removeArrangedSubview(v); v.removeFromSuperview() }
+        defer {
+            // After the chips: the action that runs when the words stop, dashed so it reads as
+            // not yet done (item 1b).
+            if let armed { chipRow.insertArrangedSubview(GhostChipView(text: "⋯ \(armed)"), at: chips.count) }
+        }
         for (i, c) in chips.enumerated() {
             let (mark, color): (String, NSColor) = {
                 switch c.state {
@@ -368,6 +387,49 @@ final class LevelMeterView: NSView {
             b.frame = CGRect(x: CGFloat(i) * (bw + gap), y: (h - bh) / 2, width: bw, height: bh)
             b.backgroundColor = tint.withAlphaComponent(0.35 + 0.65 * norm).cgColor
         }
+        CATransaction.commit()
+    }
+}
+
+/// A chip for the action a clause will run once the words stop: the same shape as the action
+/// chips, drawn with a dashed outline and softer text so it reads as pending, not done.
+final class GhostChipView: NSView {
+    private let border = CAShapeLayer()
+    private let label: NSTextField
+
+    init(text: String) {
+        label = NSTextField(labelWithString: text)
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.white.withAlphaComponent(0.06).cgColor
+        layer?.cornerRadius = 10
+        border.fillColor = nil
+        border.strokeColor = NSColor.white.withAlphaComponent(0.55).cgColor
+        border.lineWidth = 1
+        border.lineDashPattern = [3, 3]
+        layer?.addSublayer(border)
+        label.font = .systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = NSColor.white.withAlphaComponent(0.8)
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
+        translatesAutoresizingMaskIntoConstraints = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            heightAnchor.constraint(equalToConstant: 20),
+            label.widthAnchor.constraint(lessThanOrEqualToConstant: 240),
+        ])
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        border.frame = bounds
+        border.path = CGPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), cornerWidth: 10, cornerHeight: 10, transform: nil)
         CATransaction.commit()
     }
 }

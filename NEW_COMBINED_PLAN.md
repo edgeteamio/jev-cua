@@ -955,3 +955,23 @@ TypeSafe docs to keep open: `docs.typesafe.ai/concepts/how-to-build-with-system-
   public; our contract differs and our own numbers (targets 69/69, labs 100%, goals 12/14)
   stand. Worth taking: chance-corrected accuracy and ECE in the targets lab report; the
   RLOO-on-live-suites recipe and the 4B-adapter base as Phase 7 candidates (#12).
+- 2026-09-28, voice-loop UX pass (owner asked for a review, then items 1a-1c, 2a-2c, 3a-3d).
+  Measured from the 17 live `run` sessions in `runs/`: last word → dispatch p50 941 ms over 54
+  dispatches against section 3's 600 ms; the early-fire intents met it and every intent that
+  waits for a committed clause missed it by 1.6-2x. Cause: gate 4 held free text for
+  `silenceCompleteMs`, so gate 5b's `payloadSilenceMs` never bound, and each commit asked Jev
+  again for unchanged words. Adopted: one `commitWindowMs` per intent (the rule is the owner's; it
+  keeps 900 until then); armed decisions, previewed as a ghost chip and fired on the tick that
+  crosses the window from the answers in hand (once per revision; element targets are decided
+  again); a status line limited to what needs the user (`Feedback`), with chatter no longer
+  opening the notch; `page_host` in session state, so an unnamed search stays on the catalog
+  site in front; "for"/"about" dropped from the front of a query; confirmations lapsing after
+  `candidateTtlMs`, which nothing read before; chimes instead of speech for pause, resume, and
+  "stop"; an outage state and a 2 s live timeout; hold-to-talk; "what can I say?", recent
+  actions, and an undo limited to safe inverses. Found while verifying: a sessions run on a
+  locked Mac sent a Return to `loginwindow`; nothing is decided or run while the lock screen is
+  in front. Not adopted: a flat 600 ms window (6 of 118 in-phrase word gaps fell in 600-900 ms),
+  a filter on follow-ups that match on-screen text (the one suspected read-aloud search matched no
+  label). Policy version p2. Sessions suite 6/7 on an unlocked screen: the Chrome menu case
+  passes with the profile picker closed (#13); "title then body" missed on a follow-up
+  confidence of 0.54 against 0.60, a state Jev scored 0.63-0.77 on 2026-09-22.

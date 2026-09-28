@@ -164,4 +164,11 @@ public enum Spans {
     public static func isKillPhrase(_ raw: String) -> Bool {
         ["stop", "cancel", "never mind", "nevermind", "stop listening"].contains(Transcript.normalize(raw))
     }
+
+    /// The whole utterance asks what the app can do: answered in code with `Suggestions`, no model
+    /// call. Whole-utterance only, so "I don't know what can I say to him" never matches.
+    public static func isHelpPhrase(_ raw: String) -> Bool {
+        ["what can i say", "what can you do", "what can i ask", "what do i say", "show me what i can say", "help", "help me"]
+            .contains(Transcript.normalize(raw))
+    }
 }

@@ -52,5 +52,20 @@ import Testing
         var a = UtteranceAssembler()
         #expect(!a.shouldClose(now: 100))
         #expect(a.pendingFinal(now: 100) == nil)
+        #expect(a.releaseFinal(at: 100) == nil)
+    }
+
+    /// Hold-to-talk (item 3c): releasing the key makes everything said final at once, the
+    /// volatile tail included, and only once.
+    @Test func releasingAHoldSendsEverythingAsFinalOnce() {
+        var a = UtteranceAssembler()
+        _ = a.apply(segmentText: "google the", isFinal: true, at: 0)
+        _ = a.apply(segmentText: "minnesota vikings", isFinal: false, at: 0.2)
+        let f = a.releaseFinal(at: 0.3)
+        #expect(f?.text == "google the minnesota vikings")
+        #expect(f?.isFinal == true)
+        #expect(a.releaseFinal(at: 0.4) == nil, "sent once")
+        _ = a.apply(segmentText: "minnesota vikings", isFinal: true, at: 0.5)
+        #expect(a.pendingFinal(now: 5) == nil, "the recognizer's own final of the same words is not a second one")
     }
 }
