@@ -142,4 +142,14 @@ import Testing
         #expect(!JevError.decoding("x").isOutage)
         #expect(!JevError.cancelled.isOutage)
     }
+
+    /// A candidate's display label survives the run log's round trip; an old record without one
+    /// still decodes.
+    @Test func candidateLabelRoundTripsAndIsOptional() throws {
+        let c = Candidate(id: "c1", snapshotId: "s1", action: .clickElement(elementId: "e07"), targetElementId: "e07", expectedPostcondition: "pressed", label: "Archive")
+        let back = try JSONDecoder().decode(Candidate.self, from: JSONEncoder().encode(c))
+        #expect(back == c)
+        let old = #"{"id":"c1","snapshotId":"s1","action":{"pressEnter":{}},"tier":"gated","preconditions":[],"expectedPostcondition":"x"}"#
+        #expect(try JSONDecoder().decode(Candidate.self, from: Data(old.utf8)).label == nil)
+    }
 }

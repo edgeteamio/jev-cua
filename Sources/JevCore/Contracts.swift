@@ -229,7 +229,22 @@ extension Action {
 }
 
 extension Candidate {
-    public var humanLabel: String { repeats > 1 ? "\(action.humanLabel) ×\(repeats)" : action.humanLabel }
+    /// The overlay's line: a click names its element ("Click “Archive”"), not its id.
+    public var humanLabel: String {
+        var s = action.humanLabel
+        if case .clickElement = action, let label, !label.isEmpty { s = "Click “\(label.prefix(24))”" }
+        return repeats > 1 ? "\(s) ×\(repeats)" : s
+    }
+
+    /// How a spoken confirmation names it ("Say confirm to click Archive"). Only clicks and
+    /// Return are gated, and both read as a person would say them.
+    public var spokenLabel: String {
+        switch action {
+        case .clickElement: return "click " + (label.map { String($0.prefix(40)) } ?? "that")
+        case .pressEnter: return "press Return"
+        default: return action.humanLabel.lowercased()
+        }
+    }
 }
 
 public struct Candidate: Codable, Sendable, Equatable {
@@ -245,15 +260,18 @@ public struct Candidate: Codable, Sendable, Equatable {
     /// How many times the action runs ("scroll down three times"): a number code read from the
     /// transcript, applied only to actions that repeat safely (plan: code owns arithmetic).
     public var repeats: Int = 1
+    /// The target element's label as the user sees it, for the overlay and spoken prompts only:
+    /// never part of `summary`, so logs, replay, and the state sent to Jev are unchanged.
+    public var label: String?
 
     public init(id: String, snapshotId: String, action: Action, targetElementId: String? = nil, payload: String? = nil,
-                preconditions: [String] = [], expectedPostcondition: String, repeats: Int = 1) {
+                preconditions: [String] = [], expectedPostcondition: String, repeats: Int = 1, label: String? = nil) {
         self.id = id; self.snapshotId = snapshotId; self.action = action; self.targetElementId = targetElementId
         self.payload = payload; self.tier = action.tier; self.preconditions = preconditions
-        self.expectedPostcondition = expectedPostcondition; self.repeats = repeats
+        self.expectedPostcondition = expectedPostcondition; self.repeats = repeats; self.label = label
     }
 
-    enum CodingKeys: String, CodingKey { case id, snapshotId, action, targetElementId, payload, tier, preconditions, expectedPostcondition, repeats }
+    enum CodingKeys: String, CodingKey { case id, snapshotId, action, targetElementId, payload, tier, preconditions, expectedPostcondition, repeats, label }
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
@@ -265,6 +283,7 @@ public struct Candidate: Codable, Sendable, Equatable {
         preconditions = try c.decode([String].self, forKey: .preconditions)
         expectedPostcondition = try c.decode(String.self, forKey: .expectedPostcondition)
         repeats = try c.decodeIfPresent(Int.self, forKey: .repeats) ?? 1
+        label = try c.decodeIfPresent(String.self, forKey: .label)
     }
 
     /// Summary with the repeat count when there is one.

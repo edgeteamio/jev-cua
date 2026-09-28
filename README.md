@@ -429,8 +429,8 @@ a Wikipedia page went to Google. Policy version p2. What changed:
 
 - *One commit window* (`Policy.commitWindowMs`). Gate 4 held free text for `silenceCompleteMs`
   (900), so the 600 ms `payloadSilenceMs` check behind it never bound. The window is now one
-  function per intent; it returns 900 for every intent until the owner picks the rule (6 of 118
-  in-phrase word gaps in the logs fell between 600 and 900 ms, so shorter is not free).
+  function per intent (its rule, 600 ms for free text, is below: commit window, click labels,
+  profile picker).
 - *Armed decisions.* A clause waiting only for the words to stop shows its action as a dashed
   ghost chip ("⋯ Search google for “Minnesota Vikings”"); when the window passes with the words
   unchanged, the tick runs the policy again on the answers in hand and acts, with no second Jev
@@ -514,6 +514,36 @@ decided with that app in front, replaced the text of its focused field. The exec
 the front app before Return, Escape, and a scroll, as it already did before typing and menu
 commands, and the sessions suite stops a case when anything but the case's own `open_app` moved
 focus between phrases, reporting it as interrupted (not counted) instead of acting.
+
+**Commit window, click labels, profile picker (2026-09-28).**
+
+- *The commit rule.* Free text (a search, typed text) commits after 600 ms of silence, the plan's
+  payload number; everything else after 900. Measured on the 35 live search and typing commands
+  in `runs/`: no pause inside a query that had started fell between 600 and 900 ms. The two in
+  that band came right after "search for" and "search Wikipedia for", with nothing to copy yet or
+  only the site's own name, and a query that is only the site's name is now refused ("search for
+  what?"). Jev's span confidence did not tell a finished query from a growing one (median 0.85 on
+  the commands that fired, 0.78 on revisions still waiting), so it is not part of the rule. A
+  search cut short is the risk left; the next spoken measurement (#7) should watch for it.
+- *The page's site keeps its words.* A site taken from the open page, not named, no longer has its
+  own words stripped from the query ("who founded wikipedia" on Wikipedia searched `who founded`).
+- *Clicks read by their label.* Chips say "Click “Archive”", not "Click e07", and a spoken
+  confirmation says "Say confirm to click Archive", not "click_element e07"; Return is "press
+  Return". The label is for display only: summaries, logs, replay, and the state sent to Jev keep
+  the id.
+- *Chrome's profile picker.* When a menu command changes nothing in Chrome and the picker is open,
+  the action fails as "Chrome's profile picker is open: close it and try again" (and is spoken so)
+  instead of "no observable change", and the sessions suite reports the Chrome case as interrupted
+  while it is open.
+
+Tests: 112 (5 new). Labs unchanged, all from the cache: calibration 52/52, held-out 21/21,
+realistic 31/31, follow-ups 10/10, targets 69/69, 0 premature, 0 false fires. The first live
+sessions run (`runs/2026-09-28T13-38-12Z`) met a Jev outage: HTTP 503 upstream connect errors and
+timeouts on every request, which the new offline state reported once per case. Once Jev recovered:
+sessions 6/6, the Chrome case interrupted by its profile picker (`runs/2026-09-28T14-20-10Z`);
+goals 11/12 verified over the six workflows that do not use the camera, 0 false completions, 0
+failed, with one abstain in browser search when Google's results page was already open, that
+workflow's known pattern (`runs/2026-09-28T14-21-34Z` to `14-22-36Z`).
 
 ## Phase 4 status (2026-09-20): complete
 

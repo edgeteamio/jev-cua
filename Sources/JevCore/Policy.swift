@@ -249,19 +249,22 @@ public enum Policy {
     ///
     /// The trade-off (review 2026-09-28, 17 live sessions): free-text commands dispatched 956 ms
     /// (`type_text`) and 1139 ms (`web_search`) after the last word at p50, against the plan's
-    /// 600 ms, because they waited for `silenceCompleteMs` (900). But 6 of 118 in-phrase word gaps
-    /// fell between 600 and 900 ms, so a shorter window can commit a query mid-phrase ("google
-    /// search norbert | wiener"). The armed chip (Session) shows the action during the wait, and
-    /// "stop" still cancels it before it fires.
+    /// 600 ms, because they waited for `silenceCompleteMs` (900); a shorter window risks
+    /// committing a query mid-phrase ("google search norbert | wiener"). The armed chip (Session)
+    /// shows the action during the wait, and "stop" still cancels it before it fires.
     ///
-    /// Signals at hand: `intent`; `Config.payloadIntents`; Jev's confidence in the payload,
-    /// `input.answers["text_span"]?.choice?.confidence`, and in the intent,
-    /// `input.answers["intent"]?.choice?.confidence`; whether the picked span runs to the end of
-    /// what was said, `input.context.rawTranscript`. Return milliseconds.
+    /// The rule: free text commits at the plan's payload silence, everything else at the full
+    /// clause silence. Measured on the 35 live search and typing commands in `runs/` (review
+    /// 2026-09-28): no pause inside a query that had started fell between 600 and 900 ms. The two
+    /// pauses in that band came right after "search for" / "search Wikipedia for", where there
+    /// is nothing to copy yet, or only the site's own name, which `cleanQuery` now refuses. Jev's
+    /// span confidence does not tell a finished query from a growing one (fired median 0.85,
+    /// still waiting 0.78, and the site-name span reached 0.91), so it is not part of the rule.
+    /// Typed text cut short heals itself (the rest arrives as a follow-up into the same field); a
+    /// search cut short does not, which the next live measurement (#7) should watch.
     public static func commitWindowMs(intent: String, input: PolicyInput) -> Int {
-        // TODO(dan): the commit rule for free-text payloads (5-10 lines). This placeholder keeps
-        // today's behavior: 900 ms for every intent.
-        return Config.silenceCompleteMs
+        let freeText = intent == "web_search" || intent == "type_text"
+        return freeText ? Config.payloadSilenceMs : Config.silenceCompleteMs
     }
 
     /// What this decision would do once its clause commits, when committing is all it waits for:
@@ -290,9 +293,9 @@ public enum CandidateBuilder {
         let a = input.answers
         let ctx = input.context
         func fmt(_ v: Double) -> String { String(format: "%.2f", v) }
-        func make(_ action: Action, payload: String? = nil, target: String? = nil, post: String) -> Built {
+        func make(_ action: Action, payload: String? = nil, target: String? = nil, post: String, label: String? = nil) -> Built {
             Built(candidate: Candidate(id: Ident.make("c"), snapshotId: input.snapshotId, action: action, targetElementId: target,
-                                       payload: payload, expectedPostcondition: post), reason: nil)
+                                       payload: payload, expectedPostcondition: post, label: label), reason: nil)
         }
         func wait(_ reason: String) -> Built { Built(candidate: nil, reason: reason) }
 
@@ -378,7 +381,14 @@ public enum CandidateBuilder {
             let open = stated == nil ? Config.site(forHost: ctx.pageHost).flatMap { $0.search != nil ? $0 : nil } : nil
             if let open { reasons.append(GateReason(name: "site", value: "\(open.option) (open page)", threshold: "-", pass: true, note: "no site named; the page in front")) }
             let site = stated ?? open ?? Config.site(option: Config.defaultSearchSite)!
-            let cleaned = cleanQuery(pick.text, site: site)
+            // The site's own words are a reference to it only when the user named it: on a page
+            // that is merely open, "who founded wikipedia" keeps its last word.
+            let cleaned = cleanQuery(pick.text, site: site, stripSiteWords: open == nil)
+            // Nothing left but the site's name ("search Wikipedia for | ..." mid-pause) is no query.
+            guard !cleaned.text.isEmpty else {
+                reasons.append(GateReason(name: "text_span", value: pick.text, threshold: "a query", pass: false, note: "only the site's name"))
+                return wait("search for what?")
+            }
             if cleaned.text != pick.text { reasons.append(GateReason(name: "query", value: cleaned.text, threshold: "-", pass: true, note: cleaned.note)) }
             let query = cleaned.text.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? cleaned.text
             let template = (cleaned.newest ? site.newestSearch : nil) ?? site.search!
@@ -441,7 +451,7 @@ public enum CandidateBuilder {
                 guard let o = a["offscreen_target"]?.choice, o.choice != Questions.targetNone, o.confidence >= Config.T.targetConfidence,
                       let e = ctx.offscreen.first(where: { $0.id == o.choice }) else { return nil }
                 reasons.append(GateReason(name: "offscreen_target", value: "\(e.id) '\(e.text)' (\(fmt(o.confidence)))", threshold: fmt(Config.T.targetConfidence), pass: true, note: "labelled off-screen control"))
-                return make(.clickElement(elementId: e.id), target: e.id, post: "'\(e.text)' pressed: focus, window, or value changed")
+                return make(.clickElement(elementId: e.id), target: e.id, post: "'\(e.text)' pressed: focus, window, or value changed", label: e.text)
             }
             guard let t = a["click_target"]?.choice else {
                 if let off = offscreenPick() { return off }
@@ -459,7 +469,7 @@ public enum CandidateBuilder {
                 reasons.append(GateReason(name: "click_target", value: "\(top.id) (\(fmt(t.confidence)), p \(fmt(top.p)))",
                                           threshold: "conf >= \(fmt(Config.T.targetConfidence)), p >= \(fmt(Config.T.targetTopProb))", pass: true, note: "target chosen"))
                 let label = ctx.elements.first { $0.id == top.id }?.text ?? top.id
-                return make(.clickElement(elementId: top.id), target: top.id, post: "'\(label)' pressed: focus, window, or value changed")
+                return make(.clickElement(elementId: top.id), target: top.id, post: "'\(label)' pressed: focus, window, or value changed", label: label)
             }
             let contenders = ranked.prefix(4).filter { $0.p >= Config.T.disambiguateMinProb }.map(\.id)
             reasons.append(GateReason(name: "click_target", value: "\(top.id) (\(fmt(t.confidence)), p \(fmt(top.p)))",
@@ -484,7 +494,7 @@ public enum CandidateBuilder {
                 if let t = a["click_target"]?.choice, t.choice != Questions.targetNone, t.confidence >= Config.T.targetConfidence,
                    let e = ctx.elements.first(where: { $0.id == t.choice }) {
                     reasons.append(GateReason(name: "menu_target", value: "none offered; control \(e.id) '\(e.text)' (\(fmt(t.confidence)))", threshold: fmt(Config.T.targetConfidence), pass: true, note: "no menu command; the visible control instead"))
-                    return make(.clickElement(elementId: e.id), target: e.id, post: "'\(e.text)' pressed: focus, window, or value changed")
+                    return make(.clickElement(elementId: e.id), target: e.id, post: "'\(e.text)' pressed: focus, window, or value changed", label: e.text)
                 }
                 reasons.append(GateReason(name: "menu_target", value: "none offered", threshold: "-", pass: false, note: "no menu command matches the words"))
                 return wait("no matching menu command")
@@ -557,7 +567,9 @@ public enum CandidateBuilder {
     /// and its noun ("youtube videos", "on wikipedia"), leading articles and "me", and an
     /// ordering word ("latest", "newest", "recent") which becomes newest-first where the site
     /// supports it. Never touches the middle of the phrase.
-    public static func cleanQuery(_ text: String, site: Config.SiteEntry) -> (text: String, newest: Bool, note: String) {
+    /// `stripSiteWords` is false when the site was not named but taken from the page in front.
+    /// Returns an empty text when the words were only the site's name: there is no query.
+    public static func cleanQuery(_ text: String, site: Config.SiteEntry, stripSiteWords: Bool = true) -> (text: String, newest: Bool, note: String) {
         var words = text.split(separator: " ").map(String.init)
         var notes: [String] = []
         let siteWords: Set<String> = {
@@ -570,10 +582,13 @@ public enum CandidateBuilder {
             default: return [site.option, "on"]
             }
         }()
-        // Trailing site words: "alex hormozi youtube videos" -> "alex hormozi".
-        while let last = words.last, siteWords.contains(last.lowercased()) { words.removeLast(); notes.append("dropped '\(last)'") }
-        // Leading site words: "youtube alex hormozi" -> "alex hormozi".
-        while let first = words.first, siteWords.contains(first.lowercased()), first.lowercased() != "on" { words.removeFirst(); notes.append("dropped '\(first)'") }
+        if stripSiteWords {
+            // Trailing site words: "alex hormozi youtube videos" -> "alex hormozi".
+            while let last = words.last, siteWords.contains(last.lowercased()) { words.removeLast(); notes.append("dropped '\(last)'") }
+            // Leading site words: "youtube alex hormozi" -> "alex hormozi".
+            while let first = words.first, siteWords.contains(first.lowercased()), first.lowercased() != "on" { words.removeFirst(); notes.append("dropped '\(first)'") }
+            if words.isEmpty { return ("", false, "only the site's name") }
+        }
         // Leading articles, "me", and the word that joins a site to its query: "a good pasta
         // recipe" -> "good pasta recipe"; "me some lofi" -> "lofi"; "for Sweden" (from "Wikipedia
         // for Sweden", which searched `for Sweden` live on 2026-09-24) -> "Sweden".

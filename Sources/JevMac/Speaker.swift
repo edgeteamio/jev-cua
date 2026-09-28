@@ -138,12 +138,12 @@ public final class Speaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Se
         case .dispatched: return nil
         case .executed(_, let o):
             switch o.verification.outcome {
-            case .failed: return "That did not work"
+            case .failed: return o.result.detail == Browser.profilePickerDetail ? "Close Chrome's profile picker, then try again" : "That did not work"
             default: return nil
             }
         case .pendingConfirmation(let c):
             guard let c else { return nil }
-            return "Say confirm to \(c.action.summary.lowercased())"
+            return "Say confirm to \(c.spokenLabel)"   // "click Archive", not "click_element e07"
         case .cancelled:
             return nil   // "stop" gets a chime: speech would mute the mic for the next command
         case .offline(let why):

@@ -298,6 +298,15 @@ public enum Browser {
     static let bundleIds = Config.browserBundleIds
     static func isBrowser(_ bundleId: String) -> Bool { bundleIds.contains(bundleId) }
 
+    /// Chrome's profile picker ("Who's using Chrome?") is its key window while it is open: new-tab
+    /// and close-tab then do nothing anywhere, while AX still reports the browser window as focused
+    /// (the sessions Chrome case, 2026-09-22 and 2026-09-28). Found by its title, read locally.
+    public static func profilePickerOpen(pid: pid_t) -> Bool {
+        let windows = (AX.attr(AX.app(pid), kAXWindowsAttribute) as? [AXUIElement]) ?? []
+        return windows.contains { (AX.string($0, kAXTitleAttribute) ?? "").lowercased().contains("using chrome") }
+    }
+    public static let profilePickerDetail = "Chrome's profile picker is open: close it and try again"
+
     /// Waits for the front tab's page to settle after a navigation: the web area reports
     /// AXLoaded, or its child count holds still across two reads. Bounded.
     static func waitForLoad(pid: pid_t, timeoutMs: Int = 2500) async {
