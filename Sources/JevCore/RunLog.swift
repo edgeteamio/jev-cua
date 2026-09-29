@@ -41,7 +41,8 @@ public final class RunLog: @unchecked Sendable {
         public var jevLatencyP95: Double? { RunLog.percentile(jevLatencyMs, 0.95) }
     }
 
-    public static let policyVersion = "p2"   // p2 (2026-09-28): commit window per intent, open-page search site, "for" dropped from queries
+    public static let policyVersion = "p3"   // p3 (2026-09-28): one wish only on a split, a tab never picks the window's close button, ties rank by id
+    // p2 (2026-09-28): commit window per intent, open-page search site, "for" dropped from queries
 
     public let directory: URL
     public let redact: Bool

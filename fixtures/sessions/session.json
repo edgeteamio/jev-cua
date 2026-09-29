@@ -91,7 +91,7 @@
     {
       "name": "menu command in Chrome",
       "setup": {
-        "open_app": "Google Chrome"
+        "open_url": "fixtures/goals/form.html"
       },
       "phrases": [
         "open a new tab"
@@ -99,7 +99,41 @@
       "check": {
         "last_action_verified": "menu_item"
       },
-      "note": "Was a known limit (2026-09-22): Chrome's profile picker window ('Who's using Chrome?') was open and is Chrome's key window, so AXPress on File › New Tab, ⌘T through the HID tap, and the strip's + button all left the tab count at 17. Passed with the picker closed on 2026-09-28 (runs/2026-09-28T12-10-14Z) and untagged. The executor falls back from AXPress to the item's own shortcut and verifies new/closed tabs by the strip's tab count. If it fails again, check for the picker first (`jev-cua ax --tabs`)."
+      "note": "Was a known limit (2026-09-22): Chrome's profile picker window ('Who's using Chrome?') was open and is Chrome's key window, so AXPress on File › New Tab, ⌘T through the HID tap, and the strip's + button all left the tab count at 17. Passed with the picker closed on 2026-09-28 (runs/2026-09-28T12-10-14Z) and untagged. Starts from the form page: from Chrome's New Tab page, neither the menu press nor ⌘T opened a tab on 2026-09-29. The executor sends the item's shortcut only when the press is refused, never after a silent press. If it fails again, check for the picker first (`jev-cua ax --tabs`)."
+    },
+    {
+      "name": "close a tab in Chrome, not the window",
+      "setup": {
+        "open_url": "fixtures/goals/form.html"
+      },
+      "phrases": [
+        "close this tab"
+      ],
+      "check": {
+        "last_action_verified": "menu_item 'File › Close Tab'",
+        "forbid_actions": [
+          "click_element"
+        ],
+        "window_count_change": 0
+      },
+      "note": "2026-09-28: 'close the chrome tab' clicked the window's close button and the whole window closed (runs/2026-09-28T21-35-37Z): the one-wish merge fired on a clear menu_item (1.00) and let the button (0.58) beat File › Close Tab (0.96). The case closes only the form page its setup opened, from that page: from Chrome's New Tab page, neither the menu press nor ⌘W closed a tab on 2026-09-29."
+    },
+    {
+      "name": "a window's close button, verified by the window",
+      "setup": {
+        "open_url": "fixtures/goals/form.html"
+      },
+      "phrases": [
+        "open a new window",
+        "click the close button",
+        "confirm"
+      ],
+      "check": {
+        "last_action_verified": "click_element",
+        "last_evidence_contains": "window count",
+        "window_count_change": 0
+      },
+      "note": "2026-09-28: a window's close, minimize, zoom, and full-screen buttons get one press and window evidence. Before, in a browser the close button was verified by the page text, which the next window's page changed, and a click with no page change was followed by a second click at the same spot. Closing a browser window asks first (destructive 0.53), hence \"confirm\". Closes only the window the case opened."
     },
     {
       "name": "repeat the last action",

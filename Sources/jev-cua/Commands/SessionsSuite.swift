@@ -19,19 +19,22 @@ enum SessionsSuite {
         private let lock = NSLock()
         private var actionsList: [String] = []
         private var lastAction: (action: String, verified: Bool)? = nil
+        private var lastObserved: String? = nil
         private var failedCount = 0
         func on(_ e: SessionEvent) {
             lock.lock(); defer { lock.unlock() }
             switch e {
-            case .dispatched(_, let c): actionsList.append(c.summary); lastAction = (c.summary, false)
+            case .dispatched(_, let c): actionsList.append(c.summary); lastAction = (c.summary, false); lastObserved = nil
             case .executed(_, let o):
                 if let l = lastAction { lastAction = (l.action, o.verification.outcome == .verified) }
+                lastObserved = o.verification.observed
                 if o.result.status == .failed || o.verification.outcome == .failed { failedCount += 1 }
             default: break
             }
         }
         var actions: [String] { lock.lock(); defer { lock.unlock() }; return actionsList }
         var last: (action: String, verified: Bool)? { lock.lock(); defer { lock.unlock() }; return lastAction }
+        var lastEvidence: String? { lock.lock(); defer { lock.unlock() }; return lastObserved }
         var failed: Int { lock.lock(); defer { lock.unlock() }; return failedCount }
     }
 
@@ -74,6 +77,7 @@ enum SessionsSuite {
                 if Config.browserBundleIds.contains(setupFront.bundleId), Browser.profilePickerOpen(pid: setupFront.pid) {
                     interrupted = "Chrome's profile picker is open; close it and re-run"
                 }
+                let before = SuiteBaseline.take(pid: setupFront.pid)
                 for (i, text) in c.phrases.enumerated() where interrupted == nil {
                     let front = Apps.frontmost()
                     if front.name != expected { interrupted = "focus moved to \(front.name) before phrase \(i + 1)"; break }
@@ -97,7 +101,7 @@ enum SessionsSuite {
                 try? await Task.sleep(for: .milliseconds(400))
                 await perception.invalidate()
                 let obs = await perception.observe()
-                let evidence = c.check.evaluate(obs: obs, actions: trace.actions, last: trace.last)
+                let evidence = c.check.evaluate(obs: obs, actions: trace.actions, last: trace.last, lastEvidence: trace.lastEvidence, before: before)
                 let ok = evidence.ok && trace.failed == 0 && !trace.actions.isEmpty
                 let known = c.expected_fail == true
                 n += 1; if ok || known { p += 1 }

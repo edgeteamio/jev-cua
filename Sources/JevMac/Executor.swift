@@ -118,21 +118,22 @@ public actor MacExecutor: Executing {
             if let again = MenuBar.item(pid: app.pid, path: parts), (AX.bool(again, kAXEnabledAttribute) ?? true) == false { return "'\(parts.last ?? path)' is now disabled" }
             return nil
         }
-        // AXPress first (exact, no key state to get wrong). Chrome accepts the press and does
-        // nothing (2026-09-22: File › New Tab left the tab count unchanged), so when nothing changes
-        // within a beat the item's own shortcut is sent, which is what a person would press.
+        // AXPress first (exact, no key state to get wrong); the item's own shortcut only when the
+        // press is refused. An accepted press that shows nothing is an unknown outcome, and sending
+        // the shortcut then repeats it: File › Close Tab twice closes two tabs, or the window with
+        // the last one. Silence is no proof: in a window of many tabs the strip's count stayed at
+        // 18 through a verified close (2026-09-29), and from a New Tab page nothing else moves.
+        // The shortcut rescued none of the silent presses it followed in the run logs.
         var how = "pressed '\(path)'"
-        let pressed = AX.press(item)
-        if pressed, let changed = await waitFor(timeoutMs: 700, change) {
-            return outcome(c, t0, .acknowledged, how, .verified, .snapshotDiff, changed, "")
-        }
-        if let key = AX.menuShortcut(item) {
+        if AX.press(item) {
+            if let changed = await waitFor(timeoutMs: 1500, change) { return outcome(c, t0, .acknowledged, how, .verified, .snapshotDiff, changed, "") }
+        } else if let key = AX.menuShortcut(item) {
             // Through the HID tap, not posted to the pid: Chrome drops app-level accelerators
             // posted to its process (as it drops posted scroll wheels). The app is frontmost, checked above.
             Keys.press(key.keyCode, flags: key.flags, pid: nil)
-            how = pressed ? "pressed '\(path)'; no change, so \(key.label)" : "'\(path)' via \(key.label)"
+            how = "'\(path)' via \(key.label)"
             if let changed = await waitFor(timeoutMs: 1500, change) { return outcome(c, t0, .acknowledged, how, .verified, .snapshotDiff, changed, "") }
-        } else if !pressed {
+        } else {
             return outcome(c, t0, .failed, "press refused and no shortcut", .failed, .snapshotDiff, "", "re-observe")
         }
         // Nothing changed: in Chrome, first rule out the profile picker, which takes every new-tab
@@ -465,6 +466,9 @@ public actor MacExecutor: Executing {
         }
         let f = fresh(r)
         guard f.ok else { return outcome(c, t0, .failed, "stale target: \(f.why)", .failed, .snapshotDiff, f.why, "re-observe") }
+        if let sub = AX.string(r.ref, kAXSubroleAttribute), Self.windowButtons.contains(sub) {
+            return await windowButton(c, t0, r, frame: f.frame)
+        }
         let app = AX.app(r.pid)
         let focusBefore = AX.element(app, kAXFocusedUIElementAttribute)
         let windowBefore = AX.focusedWindow(app)
@@ -524,6 +528,40 @@ public actor MacExecutor: Executing {
         }
         if let changed { return outcome(c, t0, .acknowledged, how, .verified, .snapshotDiff, changed, "") }
         return outcome(c, t0, .acknowledged, how, .unknown, .snapshotDiff, "no observable change", "observe again")
+    }
+
+    private static let windowButtons: Set<String> = ["AXCloseButton", "AXMinimizeButton", "AXZoomButton", "AXFullScreenButton"]
+
+    /// A window's own close, minimize, zoom, or full-screen button. Not page content, even in a
+    /// browser: its evidence is the window (the page-text check read the next window's page as
+    /// "page text changed" when Chrome's close button shut a window, 2026-09-28), and there is no
+    /// second click, which after a close lands on whatever lies underneath, another window's
+    /// close button when windows stack.
+    private func windowButton(_ c: Candidate, _ t0: TimeInterval, _ r: ElementRef, frame: Frame?) async -> ExecutionOutcome {
+        let app = AX.app(r.pid)
+        let window = AX.element(r.ref, kAXWindowAttribute)
+        let countBefore = AX.windowCount(pid: r.pid)
+        let focusedBefore = AX.focusedWindow(app)
+        let frameBefore = window.flatMap(AX.frame)
+        var how = "AXPress"
+        if !AX.press(r.ref) {
+            // A synthetic click only after a verified AX refusal, as for any control.
+            guard let frame else { return outcome(c, t0, .failed, "press refused", .failed, .snapshotDiff, "", "re-observe") }
+            let (cx, cy) = frame.center
+            Keys.click(at: CGPoint(x: cx, y: cy))
+            how = "click at centre"
+        }
+        let changed = await waitFor(timeoutMs: 1500) { () -> String? in
+            let count = AX.windowCount(pid: r.pid)
+            if count != countBefore { return "window count \(countBefore) -> \(count)" }
+            if let w = window, AX.bool(w, kAXMinimizedAttribute) == true { return "window minimized" }
+            if let w = window, let fb = frameBefore, let fa = AX.frame(w), fa != fb { return "window frame changed" }
+            if let w = AX.focusedWindow(app), let wb = focusedBefore, !CFEqual(w, wb) { return "focused window changed" }
+            if Apps.frontmost().pid != r.pid { return "app changed" }
+            return nil
+        }
+        if let changed { return outcome(c, t0, .acknowledged, how, .verified, .snapshotDiff, changed, "") }
+        return outcome(c, t0, .acknowledged, how, .unknown, .snapshotDiff, "no window change", "observe again")
     }
 
     private func typeInto(_ c: Candidate, _ t0: TimeInterval, text: String, placement: TextPlacement, elementId: String, observation: Observation) async -> ExecutionOutcome {

@@ -209,7 +209,7 @@ public enum AX {
         return n
     }
 
-    static func windowCount(pid: pid_t) -> Int {
+    public static func windowCount(pid: pid_t) -> Int {
         (attr(Self.app(pid), kAXWindowsAttribute) as? [AXUIElement])?.count ?? 0
     }
 

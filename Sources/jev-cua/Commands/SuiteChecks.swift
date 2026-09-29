@@ -17,11 +17,20 @@ struct SuiteCheck: Decodable {
     var value_lines_ordered: [String]?
     var forbid_actions: [String]?
     var last_action_verified: String?
+    /// The executor's own evidence for the last action must contain this: "window count" for a
+    /// window's close button, which a page's text once verified.
+    var last_evidence_contains: String?
+    /// The case's app must end with this many more windows than it had after setup: 0 after
+    /// "close this tab". (No tab count: a busy window's strip stops counting at the tabs it shows.)
+    var window_count_change: Int?
     /// Exact field values by label, read from the page's text fields.
     var field_values: [String: String]?
 
-    /// `actions` are the run's action summaries in order; `last` is the final one and whether it verified.
-    func evaluate(obs: Observation, actions: [String], last: (action: String, verified: Bool)?) -> (ok: Bool, why: String) {
+    /// `actions` are the run's action summaries in order; `last` is the final one and whether it
+    /// verified; `lastEvidence` what the executor observed for it; `before` the counts taken
+    /// after setup, before the first phrase.
+    func evaluate(obs: Observation, actions: [String], last: (action: String, verified: Bool)?,
+                  lastEvidence: String? = nil, before: SuiteBaseline? = nil) -> (ok: Bool, why: String) {
         var problems: [String] = []
         if let h = page_host, (obs.pageHost ?? "") != h { problems.append("host \(obs.pageHost ?? "none") ≠ \(h)") }
         if let a = frontmost_app, obs.app.name != a { problems.append("front \(obs.app.name) ≠ \(a)") }
@@ -44,6 +53,15 @@ struct SuiteCheck: Decodable {
         if let k = last_action_verified, !(last.map { $0.action.hasPrefix(k) && $0.verified } ?? false) {
             problems.append("last action not a verified \(k)" + (last.map { " (was \($0.action)\($0.verified ? "" : ", unverified"))" } ?? " (no action)"))
         }
+        if let want = last_evidence_contains, !(lastEvidence ?? "").contains(want) {
+            problems.append("last evidence '\(lastEvidence ?? "none")' lacks '\(want)'")
+        }
+        if let want = window_count_change {
+            if let b = before {
+                let now = SuiteBaseline.take(pid: b.pid)
+                if now.windows - b.windows != want { problems.append("windows \(b.windows) -> \(now.windows), want a change of \(want)") }
+            } else { problems.append("no window count from before the phrases") }
+        }
         if let fv = field_values {
             let values = Browser.fieldValues(pid: obs.app.pid)
             for (label, want) in fv {
@@ -53,4 +71,11 @@ struct SuiteCheck: Decodable {
         }
         return (problems.isEmpty, problems.isEmpty ? "evidence ok" : problems.joined(separator: "; "))
     }
+}
+
+/// The case's app's window count, taken after setup and again for the evidence check.
+struct SuiteBaseline {
+    var pid: pid_t
+    var windows: Int
+    static func take(pid: pid_t) -> SuiteBaseline { SuiteBaseline(pid: pid, windows: AX.windowCount(pid: pid)) }
 }
