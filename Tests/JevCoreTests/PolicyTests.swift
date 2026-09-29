@@ -424,6 +424,60 @@ import Testing
         #expect(k.outcome.name == "wait")
     }
 
+    /// "close the chrome tab" (run 2026-09-28T21-35-37Z): menu_item at 1.00 with click_element
+    /// second by a rounding error, File › Close Tab at 0.96, the window's close button at 0.58. The
+    /// merge fired on that tie, the close button won, and the whole window closed.
+    @Test func aClearMenuIntentIsNoSplitAndATabNeverClosesTheWindow() {
+        let closeWindow = Element(id: "e37", role: "button", text: Element.closeWindowLabel, where: "top-left", editable: false, secure: false, frame: Frame(x: 18, y: 145, width: 16, height: 16))
+        var i = input("close the chrome tab", isFinal: true, intent: "menu_item", mutate: { a in
+            a["intent"] = .choice(ChoiceAnswer(choice: "menu_item", probabilities: ["menu_item": 0.9999, "click_element": 0.00004, "cancel": 0.00003, "none": 0.00003], confidence: 0.99))
+            a["menu_target"] = self.target("m18", probs: ["m18": 0.96, "m15": 0.02, "none": 0.02], conf: 0.96)
+            a["click_target"] = self.target("e37", probs: ["e37": 0.58, "none": 0.42], conf: 0.56)
+        })
+        i.context.elements = [closeWindow]
+        i.context.menus = [MenuItem(id: "m15", path: "File › Close Window"), MenuItem(id: "m18", path: "File › Close Tab")]
+        let r = Policy.evaluate(i)
+        #expect(r.candidate?.action == .menuItem(id: "m18", path: "File › Close Tab"))
+        #expect(!r.reasons.contains { $0.name == "intent_merge" }, "a clear intent is no split")
+        #expect(r.reasons.contains { $0.note.contains("a tab is not the window") })
+
+        // A real split over a tab: the close button is still not the control that wins.
+        var split = i
+        split.answers["intent"] = .choice(ChoiceAnswer(choice: "menu_item", probabilities: ["menu_item": 0.46, "click_element": 0.44, "none": 0.1], confidence: 0.3))
+        split.answers["click_target"] = target("e37", probs: ["e37": 0.9, "none": 0.1], conf: 0.85)
+        let s = Policy.evaluate(split)
+        #expect(s.reasons.contains { $0.name == "intent_merge" })
+        #expect(s.candidate?.action == .menuItem(id: "m18", path: "File › Close Tab"))
+        // With no menu offered, it waits rather than clicking the close button.
+        var bare = split
+        bare.context.menus = []
+        #expect(Policy.evaluate(bare).candidate == nil)
+
+        // Asked for as a click: waits, and says why.
+        var click = input("click close tab", isFinal: true, intent: "click_element", mutate: { a in
+            a["click_target"] = self.target("e37", probs: ["e37": 0.9, "none": 0.1], conf: 0.85)
+        })
+        click.context.elements = [closeWindow]
+        let c = Policy.evaluate(click)
+        #expect(c.candidate == nil)
+        #expect(c.summary == "that closes the whole window, not the tab")
+
+        // The window is still the close button's to close.
+        var window = click
+        window.context.rawTranscript = "close the window"
+        #expect(Policy.evaluate(window).candidate?.action == .clickElement(elementId: "e37"))
+    }
+
+    @Test func onlyTheWindowsCloseButtonIsBarredAndOnlyForATab() {
+        let close = Element(id: "e01", role: "button", text: Element.closeWindowLabel, where: "top-left", editable: false, secure: false, frame: Frame(x: 0, y: 0, width: 16, height: 16))
+        let page = Element(id: "e02", role: "button", text: "Close", where: "center", editable: false, secure: false, frame: Frame(x: 0, y: 0, width: 40, height: 20))
+        #expect(Policy.closesMoreThanATab(close, transcript: "close this tab"))
+        #expect(Policy.closesMoreThanATab(close, transcript: "Close these Tabs."))
+        #expect(!Policy.closesMoreThanATab(close, transcript: "close the window"))
+        #expect(!Policy.closesMoreThanATab(close, transcript: "close the table"))
+        #expect(!Policy.closesMoreThanATab(page, transcript: "close this tab"), "a page's own Close button is the page's business")
+    }
+
     // MARK: Voice-loop UX pass (review 2026-09-28)
 
     /// Item 1a: free text commits at the commit window (and not before the 600 ms floor), whatever

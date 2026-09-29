@@ -45,18 +45,26 @@ public enum Policy {
         let intentAnswer = a["intent"]?.choice
         var intent = intentAnswer?.choice ?? "none"
         var conf = intentAnswer?.confidence ?? 0
+        let barred = barredClick(input)
         // A visible control and a menu command that name the same thing ("close the window": the
         // window's close button and File › Close) split Jev between click_element and menu_item.
-        // They are one wish: when those are the top two, their mass is the intent's, and a control
-        // picked with confidence wins, since a visible control needs no menu. With no confident
-        // control and menus on offer, the menu branch keeps it. (Targets lab, 2026-09-22.)
-        if let ia = intentAnswer, Set(ia.ranked().prefix(2).map(\.id)) == ["click_element", "menu_item"] {
+        // They are one wish: when those are the top two and neither clears the intent gate alone,
+        // their mass is the intent's, and a control picked with confidence wins, since a visible
+        // control needs no menu. With no confident control and menus on offer, the menu branch
+        // keeps it. (Targets lab, 2026-09-22.) A clear intent is no split: "close the chrome tab"
+        // was menu_item at 1.00 with click_element second by a rounding error, and the merge let
+        // the close button (0.58) beat File › Close Tab (0.96). (2026-09-28)
+        if let ia = intentAnswer, conf < Config.T.intentConfidence, Set(ia.ranked().prefix(2).map(\.id)) == ["click_element", "menu_item"] {
             let mass = min(1, (ia.probabilities["click_element"] ?? 0) + (ia.probabilities["menu_item"] ?? 0))
-            let clickOk = a["click_target"]?.choice.map { $0.choice != Questions.targetNone && $0.confidence >= Config.T.targetConfidence } ?? false
+            let clickOk = a["click_target"]?.choice.map { $0.choice != Questions.targetNone && $0.choice != barred?.id && $0.confidence >= Config.T.targetConfidence } ?? false
             intent = (clickOk || ctx.menus.isEmpty) ? "click_element" : "menu_item"
             conf = max(conf, mass)
             reasons.append(GateReason(name: "intent_merge", value: "click_element+menu_item (\(String(format: "%.2f", mass)))", threshold: "-", pass: true,
                                       note: intent == "click_element" ? "one wish; the visible control wins" : "one wish; no confident control, the menu command"))
+        }
+        if let e = barred, intent == "click_element" || intent == "menu_item" {
+            reasons.append(GateReason(name: "click_target", value: "\(e.id) '\(e.text)'", threshold: "-", pass: false,
+                                      note: "a tab is not the window: its close button closes every tab"))
         }
 
         func check(_ name: String, _ value: String, _ threshold: String, _ pass: Bool, _ note: String) -> Bool {
@@ -278,6 +286,21 @@ public enum Policy {
         guard case .act = r.outcome else { return nil }
         return r.candidate
     }
+
+    /// A tab is not the window: the window's close button closes every tab in it, so words that
+    /// name a tab never pick it, in any branch. ("close the chrome tab", 2026-09-28: the close
+    /// button at 0.58 beat File › Close Tab at 0.96 and the whole window closed.)
+    public static func closesMoreThanATab(_ e: Element, transcript: String) -> Bool {
+        guard e.text == Element.closeWindowLabel else { return false }
+        let words = transcript.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+        return words.contains("tab") || words.contains("tabs")
+    }
+
+    /// Jev's click target, when it is an element `closesMoreThanATab` bars.
+    static func barredClick(_ input: PolicyInput) -> Element? {
+        guard let t = input.answers["click_target"]?.choice else { return nil }
+        return input.context.elements.first { $0.id == t.choice && closesMoreThanATab($0, transcript: input.context.rawTranscript) }
+    }
 }
 
 /// Step 6 of the gate order: Jev picked options, code builds the executable action.
@@ -292,6 +315,7 @@ public enum CandidateBuilder {
     public static func build(intent: String, input: PolicyInput, reasons: inout [GateReason]) -> Built {
         let a = input.answers
         let ctx = input.context
+        let barred = Policy.barredClick(input)
         func fmt(_ v: Double) -> String { String(format: "%.2f", v) }
         func make(_ action: Action, payload: String? = nil, target: String? = nil, post: String, label: String? = nil) -> Built {
             Built(candidate: Candidate(id: Ident.make("c"), snapshotId: input.snapshotId, action: action, targetElementId: target,
@@ -458,6 +482,10 @@ public enum CandidateBuilder {
                 reasons.append(GateReason(name: "click_target", value: "no elements", threshold: "-", pass: false, note: "no clickable element on this screen"))
                 return wait("no clickable element on this screen")
             }
+            if t.choice == barred?.id {
+                if let off = offscreenPick() { return off }
+                return wait("that closes the whole window, not the tab")
+            }
             let ranked = t.ranked(excluding: [Questions.targetNone]).filter { id in ctx.elements.contains { $0.id == id.id } }
             guard t.choice != Questions.targetNone, let top = ranked.first else {
                 if let off = offscreenPick() { return off }
@@ -491,7 +519,7 @@ public enum CandidateBuilder {
             guard !ctx.menus.isEmpty else {
                 // No menu command matches the words; a confidently picked on-screen control with
                 // that name does the same job (the targets lab offers no menus at all).
-                if let t = a["click_target"]?.choice, t.choice != Questions.targetNone, t.confidence >= Config.T.targetConfidence,
+                if let t = a["click_target"]?.choice, t.choice != Questions.targetNone, t.choice != barred?.id, t.confidence >= Config.T.targetConfidence,
                    let e = ctx.elements.first(where: { $0.id == t.choice }) {
                     reasons.append(GateReason(name: "menu_target", value: "none offered; control \(e.id) '\(e.text)' (\(fmt(t.confidence)))", threshold: fmt(Config.T.targetConfidence), pass: true, note: "no menu command; the visible control instead"))
                     return make(.clickElement(elementId: e.id), target: e.id, post: "'\(e.text)' pressed: focus, window, or value changed", label: e.text)

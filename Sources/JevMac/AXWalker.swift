@@ -199,7 +199,7 @@ public enum AXWalker {
     private static func label(for node: Node, el: AXUIElement) -> String {
         // Window controls carry no title; their subrole is the label.
         switch node.subrole {
-        case "AXCloseButton": return "close window"
+        case "AXCloseButton": return Element.closeWindowLabel
         case "AXMinimizeButton": return "minimize window"
         case "AXFullScreenButton": return "full screen"
         case "AXZoomButton": return "zoom window"

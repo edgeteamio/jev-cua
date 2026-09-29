@@ -545,6 +545,47 @@ goals 11/12 verified over the six workflows that do not use the camera, 0 false 
 failed, with one abstain in browser search when Google's results page was already open, that
 workflow's known pattern (`runs/2026-09-28T14-21-34Z` to `14-22-36Z`).
 
+**Close the tab, not the window (2026-09-28, caught in live use).** "close the chrome tab"
+closed the whole Chrome window (`runs/2026-09-28T21-35-37Z`). Jev had it right, `menu_item` at
+1.00 and File › Close Tab at 0.96, but the one-wish merge fired and clicked the window's close
+button, which Jev had picked at 0.58 as the nearest thing to "close"; the page evidence then read
+the next window's page and called the click verified.
+
+- *One wish only on a split.* The merge now needs click_element and menu_item on top *and* no
+  intent clearing the gate alone. Jev rounds: every intent but one came back at exactly 0, and
+  which zero ranked second followed the Dictionary's per-process seed, so replaying the logged
+  answers on the old code clicked the close button 7 times in 100. `ranked()` breaks ties by id.
+  Over all 1,918 logged decisions in `runs/` (old and new policy, same tie order), the one other
+  change is "close the window" in Notes (menu_item 0.96): File › Close instead of the close
+  button, as it ran live that day.
+- *A tab is not the window.* Words that name a tab never pick the window's close button, in any
+  branch: the merge, a click, or a menu command with no menu offered. Asked as a click with only
+  that button on offer, it waits: "that closes the whole window, not the tab".
+- *Window buttons are verified by the window.* Close, minimize, zoom, and full screen get one press
+  and window evidence (count, minimized, frame, focus), never the page-text check or a second
+  click, which after a close lands on whatever lies underneath. Live on a TextEdit window: "click
+  the close button", one AXPress, window count 1 → 0.
+- *No shortcut after a silent menu press.* A menu item's shortcut is sent only when AXPress is
+  refused. After an accepted press that showed nothing, it repeated an unknown outcome: File ›
+  Close Tab twice closes two tabs, or the window with the last one. Silence is no proof: in a
+  window of many tabs the strip's count stayed at 18 through a verified close, and from Chrome's
+  New Tab page nothing else moves (#22). In the run logs the shortcut rescued none of the silent
+  presses it followed.
+- *Session cases.* "close a tab in Chrome, not the window" (a verified File › Close Tab, no click,
+  Chrome's windows unchanged) and "a window's close button, verified by the window" (a second
+  window opened and closed by its button; closing a browser window asks first, so the case says
+  "confirm"), with two new suite checks, `window_count_change` against counts taken after setup
+  and `last_evidence_contains` on the executor's own evidence. The Chrome cases start from the
+  form page. `fixtures/targets/chrome.json` is a Chrome capture on that page, the user's own
+  extension buttons left out; three of its rows ("click close on this tab", "x out this tab",
+  "shut this tab") had Jev pick the close button at 0.46 to 0.55 and fail on the old policy (7/10).
+  `lab --targets` takes an absolute path.
+
+Tests: 115 (3 new; the policy tests fail on the old code with either rule taken out). Labs
+unchanged, all from the cache: calibration 52/52, held-out 21/21, realistic 31/31, follow-ups
+10/10, 0 premature, 0 false fires; targets 79/79 with the Chrome capture. Sessions 9/9
+(`runs/2026-09-29T03-12-44Z`).
+
 ## Phase 4 status (2026-09-20): complete
 
 `AXWalker` walks the focused window with one `AXUIElementCopyMultipleAttributeValues` per node,

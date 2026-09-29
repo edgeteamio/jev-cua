@@ -152,4 +152,12 @@ import Testing
         let old = #"{"id":"c1","snapshotId":"s1","action":{"pressEnter":{}},"tier":"gated","preconditions":[],"expectedPostcondition":"x"}"#
         #expect(try JSONDecoder().decode(Candidate.self, from: Data(old.utf8)).label == nil)
     }
+
+    /// Ties rank by id, the same in every process: the intent answer for "close the chrome tab"
+    /// had every option but one at exactly 0.
+    @Test func tiesRankTheSameInEveryProcess() {
+        let a = ChoiceAnswer(choice: "menu_item", probabilities: ["menu_item": 1, "go_back": 0, "confirm": 0, "click_element": 0, "cancel": 0], confidence: 1)
+        #expect(a.ranked().map(\.id) == ["menu_item", "cancel", "click_element", "confirm", "go_back"])
+        #expect(a.ranked(excluding: ["cancel"]).map(\.id) == ["menu_item", "click_element", "confirm", "go_back"])
+    }
 }

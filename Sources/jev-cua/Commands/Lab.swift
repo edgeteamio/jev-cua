@@ -26,7 +26,7 @@ enum Lab {
             // Phase 4 target lab: one or more capture files (comma-separated or a directory).
             var files: [URL] = []
             for part in targets.split(separator: ",").map(String.init) {
-                let u = cwd.appending(path: part)
+                let u = path(part)
                 var isDir: ObjCBool = false
                 if FileManager.default.fileExists(atPath: u.path, isDirectory: &isDir), isDir.boolValue {
                     files += ((try? FileManager.default.contentsOfDirectory(at: u, includingPropertiesForKeys: nil)) ?? []).filter { $0.pathExtension == "json" }.sorted { $0.path < $1.path }
