@@ -1000,3 +1000,16 @@ TypeSafe docs to keep open: `docs.typesafe.ai/concepts/how-to-build-with-system-
   (chips, spoken confirmations); Chrome's profile picker is named when it swallows a menu command.
   Live after a Jev outage passed: sessions 6/6 (the Chrome case interrupted by the picker), goals
   11/12 over the six workflows without the camera, 0 false completions.
+- 2026-09-28, close the tab, not the window. "close the chrome tab" clicked the window's close
+  button: the one-wish merge fired on a clear `menu_item` (1.00; click_element second only through
+  a tie at 0 broken by Dictionary order, 7 in 100 replays) and let the button (0.58) beat File ›
+  Close Tab (0.96). The merge now needs a split (no intent clearing the gate alone), ties rank by
+  id, and words that name a tab never pick the window's close button. The executor verifies window
+  buttons by the window with no second click, and sends a menu item's shortcut only when the press
+  is refused: silence after a press is no proof in Chrome (a busy window's tab count stays at 18,
+  and from the New Tab page nothing moves, #22). Policy p3; replaying all 1,918 logged decisions
+  changes one other, "close the window" in Notes, to File › Close. Two session cases (a tab closed
+  with the window kept; a window's close button verified by the window count) with
+  `window_count_change` and `last_evidence_contains`, and a Chrome targets capture whose three
+  close-button rows fail on the old policy. Found on the way: a command naming another app runs in
+  the front one (#21).

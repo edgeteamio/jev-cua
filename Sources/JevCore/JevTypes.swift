@@ -111,9 +111,14 @@ public struct ChoiceAnswer: Codable, Sendable, Equatable {
     public init(choice: String, probabilities: [String: Double], confidence: Double) {
         self.choice = choice; self.probabilities = probabilities; self.confidence = confidence
     }
-    /// Options by probability, highest first, excluding `excluding`.
+    /// Options by probability, highest first, excluding `excluding`. Equal probabilities rank by
+    /// id: a Dictionary's order is seeded per process, and Jev rounds, so "close the chrome tab"
+    /// came back with every intent but one at exactly 0 and the runner-up changed from launch to
+    /// launch (2026-09-28).
     public func ranked(excluding: Set<String> = []) -> [(id: String, p: Double)] {
-        probabilities.filter { !excluding.contains($0.key) }.sorted { $0.value > $1.value }.map { ($0.key, $0.value) }
+        probabilities.filter { !excluding.contains($0.key) }
+            .sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
+            .map { ($0.key, $0.value) }
     }
 }
 

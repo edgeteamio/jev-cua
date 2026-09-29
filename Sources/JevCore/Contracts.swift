@@ -55,6 +55,9 @@ public struct Element: Codable, Sendable, Equatable {
         self.id = id; self.role = role; self.text = text; self.where = `where`
         self.editable = editable; self.secure = secure; self.frame = frame; self.container = container
     }
+
+    /// The label a window's close button gets (it carries no title of its own).
+    public static let closeWindowLabel = "close window"
 }
 
 public struct FocusedField: Codable, Sendable, Equatable {

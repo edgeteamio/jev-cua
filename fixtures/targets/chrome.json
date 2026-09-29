@@ -1,0 +1,287 @@
+{
+  "app": "Google Chrome",
+  "bundleId": "com.google.Chrome",
+  "commands": [
+    {
+      "text": "close this tab",
+      "expect": "none"
+    },
+    {
+      "text": "close the chrome tab",
+      "expect": "none"
+    },
+    {
+      "text": "click close on this tab",
+      "expect": "none"
+    },
+    {
+      "text": "x out this tab",
+      "expect": "none"
+    },
+    {
+      "text": "shut this tab",
+      "expect": "none"
+    },
+    {
+      "text": "close the window",
+      "expect": "e05"
+    },
+    {
+      "text": "minimize the window",
+      "expect": "e06"
+    },
+    {
+      "text": "bookmark this tab",
+      "expect": "e14"
+    },
+    {
+      "text": "open a new tab",
+      "expect": "e09"
+    },
+    {
+      "text": "reload the page",
+      "expect": "e11"
+    }
+  ],
+  "elements": [
+    {
+      "editable": true,
+      "frame": {
+        "height": 39,
+        "width": 540,
+        "x": 494,
+        "y": 261
+      },
+      "id": "e01",
+      "role": "textfield",
+      "secure": false,
+      "text": "First name",
+      "where": "top-center"
+    },
+    {
+      "editable": true,
+      "frame": {
+        "height": 39,
+        "width": 540,
+        "x": 494,
+        "y": 336
+      },
+      "id": "e02",
+      "role": "textfield",
+      "secure": false,
+      "text": "Last name",
+      "where": "center"
+    },
+    {
+      "editable": true,
+      "frame": {
+        "height": 39,
+        "width": 540,
+        "x": 494,
+        "y": 411
+      },
+      "id": "e03",
+      "role": "textfield",
+      "secure": false,
+      "text": "City",
+      "where": "center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 43,
+        "width": 126,
+        "x": 494,
+        "y": 467
+      },
+      "id": "e04",
+      "role": "button",
+      "secure": false,
+      "text": "Submit form",
+      "where": "center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 55,
+        "y": 65.5
+      },
+      "id": "e05",
+      "role": "button",
+      "secure": false,
+      "text": "close window",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 78,
+        "y": 65.5
+      },
+      "id": "e06",
+      "role": "button",
+      "secure": false,
+      "text": "minimize window",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 16,
+        "width": 16,
+        "x": 101,
+        "y": 65.5
+      },
+      "id": "e07",
+      "role": "button",
+      "secure": false,
+      "text": "full screen",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 28,
+        "width": 28,
+        "x": 135,
+        "y": 59
+      },
+      "id": "e08",
+      "role": "popupbutton",
+      "secure": false,
+      "text": "Tab Search",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 41,
+        "width": 28,
+        "x": 1258,
+        "y": 53
+      },
+      "id": "e09",
+      "role": "button",
+      "secure": false,
+      "text": "New Tab",
+      "where": "top-right"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 40,
+        "width": 124,
+        "x": 1340,
+        "y": 53
+      },
+      "id": "e10",
+      "role": "button",
+      "secure": false,
+      "text": "Open Gemini in Chrome",
+      "where": "top-right"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 34,
+        "width": 34,
+        "x": 121,
+        "y": 99
+      },
+      "id": "e11",
+      "role": "button",
+      "secure": false,
+      "text": "Reload",
+      "where": "top-left"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 24,
+        "width": 53,
+        "x": 169,
+        "y": 104
+      },
+      "id": "e12",
+      "role": "popupbutton",
+      "secure": false,
+      "text": "File",
+      "where": "top-left"
+    },
+    {
+      "editable": true,
+      "frame": {
+        "height": 24,
+        "width": 701,
+        "x": 230,
+        "y": 104
+      },
+      "id": "e13",
+      "role": "textfield",
+      "secure": false,
+      "text": "Address and search bar",
+      "where": "top-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 24,
+        "width": 24,
+        "x": 939,
+        "y": 104
+      },
+      "id": "e14",
+      "role": "button",
+      "secure": false,
+      "text": "Bookmark this tab",
+      "where": "top-center"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 34,
+        "width": 34,
+        "x": 1128,
+        "y": 99
+      },
+      "id": "e15",
+      "role": "popupbutton",
+      "secure": false,
+      "text": "Extensions",
+      "where": "top-right"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 34,
+        "width": 93,
+        "x": 1182,
+        "y": 99
+      },
+      "id": "e16",
+      "role": "button",
+      "secure": false,
+      "text": "Paused",
+      "where": "top-right"
+    },
+    {
+      "editable": false,
+      "frame": {
+        "height": 34,
+        "width": 177,
+        "x": 1280,
+        "y": 99
+      },
+      "id": "e17",
+      "role": "popupbutton",
+      "secure": false,
+      "text": "New Chrome available",
+      "where": "top-right"
+    }
+  ],
+  "offscreen": []
+}
