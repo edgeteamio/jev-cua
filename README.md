@@ -65,6 +65,61 @@ Screen Recording is not requested; v1 takes no screenshots.
 (debug, release, or the bundle) reaches `api.typesafe.ai`, LuLu shows an alert and blocks until
 it is answered. Choose Allow for the process; until then every Jev request times out after 5 s.
 
+### Jev through Vercel AI Gateway (optional)
+
+Vercel AI Gateway serves Jev (`typesafe-ai/jev`, the only `evaluation` model in its catalog)
+through a TypeSafe-compatible API: the same `POST /v1/systemone` request and the same answers at
+`https://ai-gateway.vercel.sh/typesafe`, billed through Vercel with the team's budgets, spend
+alerts, and Logs. Only the base URL, the credential, and the model name change, so answer
+validation, the caches, and replay work as before. To use it, create a key (the CLI prints it
+once; put it in `.env`, not in chat or shell history):
+
+```bash
+vercel ai-gateway api-keys create --name jev-cua --budget 5 --refresh-period monthly
+```
+
+then set `JEV_ENDPOINT=gateway` and `AI_GATEWAY_API_KEY=…` in `.env` (a Vercel OIDC token in
+`VERCEL_OIDC_TOKEN` works too), or pass `--jev-endpoint gateway` for one run.
+`scripts/jev-cua doctor --live` then reports `live via gateway`, and every run's `summary.json`
+records `endpoint` and `model`.
+
+- **Version.** `typesafe-ai/jev` is not a version: like TypeSafe's `jev-latest` it moves when a
+  release ships, and the gateway echoes the ID you sent rather than the version that answered.
+  Today it means `jev-1.13.0`, the version every threshold here was tuned on (TypeSafe's models
+  page lists no other). `doctor` and `models` mark it "not pinned"; `JEV_GATEWAY_MODEL` sends
+  another ID. When TypeSafe ships a new version, run the labs through the gateway before relying
+  on it.
+- **Caches.** The model is part of every request, so answers cached through one endpoint are
+  never served for the other.
+- **Errors.** A rejected key (401), no credits (402 `insufficient_funds`), an exhausted budget
+  (402 `quota_for_entity_exceeded`), or a missing payment method (403) show as the offline state
+  with that reason.
+
+Measured on 2026-09-28 with a key (`--jev-endpoint gateway`):
+
+- **No pinning.** The gateway serves only `typesafe-ai/jev`: `typesafe-ai/jev-1.13.0`,
+  `typesafe-ai/jev-latest`, and `jev-1.13.0` all return 404 `model_not_found` (a wrong
+  `JEV_GATEWAY_MODEL` shows as the offline state, "the endpoint has no such model").
+- **The same model today.** All four labs through the gateway match the direct route exactly:
+  calibration 52/52, held-out 21/21, realistic 31/31, follow-ups 10/10, 100% app/site/span, 0
+  premature, 0 false fires, fired at first fireable 21/23, 8/9, 7/8. Prefix by prefix, the
+  gateway's probabilities differ from the committed `jev-1.13.0` answers no more than
+  `jev-1.13.0` differs from itself between runs (intent confidence: median 0.00 to 0.01, p95 0.06
+  to 0.07, max 0.11 through the gateway; 0.01, 0.08 to 0.09, 0.11 direct against direct), and
+  98 to 99% of prefixes reach the same decision.
+- **Slower, with stalls.** Twelve requests each, a fresh connection every time: direct median 228
+  ms and 0 timeouts, gateway 352 ms and 1 timeout past 5 s. Through the labs the gateway's p50 was
+  273 to 305 ms with a p95 of 0.46 to 2.4 s. The sessions suite through the gateway passed 4/6
+  (`runs/2026-09-28T15-06-29Z`): every answered decision was right (14 of 14), and both failures
+  were requests that timed out (3 of 17). The live app times out after 2 s, so a stall there is a
+  dropped command.
+
+What the checks changed: the lab asks again when no answer came back (up to three tries; a stall
+had aborted whole runs), the offline state waits for two stalls in a row (a rejected key, spend, or
+a missing model still shows at once), and lab reports name their endpoint. Until the gateway's
+tail improves, keep the direct endpoint for the voice loop and use the gateway where its billing,
+budgets, and logs matter.
+
 ### Toolchain
 
 Two things are wrong with the shims on this machine, so the scripts bypass them:

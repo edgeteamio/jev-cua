@@ -46,13 +46,19 @@ enum Lab {
             return
         }
 
+        // Which endpoint answered is part of the result: two routes serve Jev (JEV_ENDPOINT).
+        let endpoint = (live as? JevClient)?.endpoint.summary ?? "cache only (--no-live)"
         var reports: [(String, LabReport)] = []
         let cal = try Fixtures.load(fixturesPath)
-        reports.append(("calibration", try await runner.run(cal, name: "calibration")))
+        var calReport = try await runner.run(cal, name: "calibration")
+        calReport.summary.endpoint = endpoint
+        reports.append(("calibration", calReport))
         try cache.save()
         if let heldoutPath {
             let held = try Fixtures.load(heldoutPath)
-            reports.append(("heldout", try await runner.run(held, name: "heldout")))
+            var heldReport = try await runner.run(held, name: "heldout")
+            heldReport.summary.endpoint = endpoint
+            reports.append(("heldout", heldReport))
             try cache.save()
         }
 

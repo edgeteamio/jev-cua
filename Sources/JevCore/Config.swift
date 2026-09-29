@@ -9,7 +9,16 @@ public enum Config {
     /// Pinned. `jev-latest` moves on release and the thresholds below are tuned per version.
     public static let model = "jev-1.13.0"
     public static let baseURL = URL(string: "https://api.typesafe.ai")!
-    public static let pricePerMillionInputTokensUSD = 0.042   // output tokens are free
+    public static let pricePerMillionInputTokensUSD = 0.042   // output tokens are free (the same through AI Gateway)
+
+    /// Vercel AI Gateway's TypeSafe-compatible API (`JEV_ENDPOINT=gateway`): the same request and
+    /// answers as `baseURL`, authenticated with an AI Gateway key and billed through Vercel.
+    public static let gatewayBaseURL = URL(string: "https://ai-gateway.vercel.sh/typesafe")!
+    /// Jev's ID in the gateway catalog (`GET https://ai-gateway.vercel.sh/v1/models`, 2026-09-28).
+    /// It is not a version: like TypeSafe's `jev-latest` it moves when a release ships, and today
+    /// both mean `jev-1.13.0`, the version every threshold here was tuned on. When TypeSafe ships
+    /// another, pin it with `JEV_GATEWAY_MODEL` if the gateway accepts one, or re-run the labs.
+    public static let gatewayModel = "typesafe-ai/jev"
 
     // MARK: Thresholds
 

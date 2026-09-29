@@ -1000,6 +1000,19 @@ TypeSafe docs to keep open: `docs.typesafe.ai/concepts/how-to-build-with-system-
   (chips, spoken confirmations); Chrome's profile picker is named when it swallows a menu command.
   Live after a Jev outage passed: sessions 6/6 (the Chrome case interrupted by the picker), goals
   11/12 over the six workflows without the camera, 0 false completions.
+- 2026-09-28, Jev through Vercel AI Gateway (owner asked). The gateway lists Jev as
+  `typesafe-ai/jev`, its one `evaluation` model, priced as TypeSafe prices it, and serves it three
+  ways: its own `/v1/evaluate` (different question and answer names, no choice confidence shown),
+  AI SDK 7's `evaluate`, and a TypeSafe-compatible API at `ai-gateway.vercel.sh/typesafe` that takes
+  our request unchanged. Adopted the last as `JEV_ENDPOINT=gateway` (`JevEndpoint`): base URL,
+  credential (`AI_GATEWAY_API_KEY` or `VERCEL_OIDC_TOKEN`), and model change, nothing else; the
+  gateway's generation ID stands in for TypeSafe's request ID. Measured with a key: the gateway
+  rejects every versioned ID (404 `model_not_found`), so it cannot be pinned; it serves
+  `jev-1.13.0` today (four labs identical, prefix probabilities within the direct route's own
+  run-to-run spread); it is slower and stalls (median 352 against 228 ms; timeouts on 1 of 12
+  probes and 3 of 17 sessions requests, the sessions suite 4/6 with every answered decision
+  right). Adopted from that: lab retries on no answer, an offline state that waits for two stalls
+  in a row, the endpoint in lab reports. The direct endpoint stays the default for the voice loop.
 - 2026-09-28, close the tab, not the window. "close the chrome tab" clicked the window's close
   button: the one-wish merge fired on a clear `menu_item` (1.00; click_element second only through
   a tie at 0 broken by Dictionary order, 7 in 100 replays) and let the button (0.58) beat File ›
